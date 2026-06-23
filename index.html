@@ -724,40 +724,112 @@
     .btn-cert:hover { background: var(--red); color: #fff; border-color: var(--red); }
 
     /* ============================================================
-       VIDEOS
+       VIDEOS — CARRUSEL TIPO ANUNCIO
     ============================================================ */
     #videos {
-      background: var(--bg-2);
+      background: #000;
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
+      padding: 72px 0;
     }
 
-    .videos-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 20px;
-    }
-
-    @media (min-width: 700px) {
-      .videos-grid { grid-template-columns: repeat(3, 1fr); }
-    }
-
-    .video-item video {
+    .vid-carousel {
+      position: relative;
       width: 100%;
-      border-radius: 8px;
-      display: block;
+      height: 500px;
+      overflow: hidden;
       background: #000;
     }
 
-    .video-label {
-      font-family: var(--font-title);
-      font-size: 13px;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: var(--gray);
-      margin-top: 8px;
-      text-align: center;
+    @media (max-width: 480px) {
+      .vid-carousel { height: 300px; }
     }
+
+    .vid-slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.4s;
+      pointer-events: none;
+    }
+
+    .vid-slide.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .vid-slide video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Flechas */
+    .vid-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      transition: background 0.2s;
+    }
+
+    .vid-arrow:hover { background: var(--red); }
+    .vid-arrow.prev  { left: 14px; }
+    .vid-arrow.next  { right: 14px; }
+
+    /* Botón mute */
+    .vid-mute {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      transition: background 0.2s;
+    }
+
+    .vid-mute:hover { background: var(--red); }
+
+    /* Dots */
+    .vid-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .vid-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #444;
+      cursor: pointer;
+      transition: background 0.2s;
+      border: none;
+    }
+
+    .vid-dot.active { background: var(--red-light); }
 
     /* ============================================================
        RESPONSIVE
@@ -1005,36 +1077,88 @@
   <!-- ============================================================
        VIDEOS — EN ACCIÓN
   ============================================================ -->
-  <section id="videos" class="section">
-    <div class="container">
+  <section id="videos">
+    <div class="container" style="padding-bottom: 0;">
       <p class="section-label">En acción</p>
-      <h2 class="section-title">Videos</h2>
-      <div class="videos-grid">
-
-        <div class="video-item">
-          <video controls muted playsinline preload="metadata">
-            <source src="VIDEOS Y FOTOS/Copia de video 1 pablo.mp4" type="video/mp4">
-          </video>
-          <p class="video-label">Entrenamiento #1</p>
-        </div>
-
-        <div class="video-item">
-          <video controls muted playsinline preload="metadata">
-            <source src="VIDEOS Y FOTOS/Copia de Video 2 pablo.MOV" type="video/mp4">
-          </video>
-          <p class="video-label">Entrenamiento #2</p>
-        </div>
-
-        <div class="video-item">
-          <video controls muted playsinline preload="metadata">
-            <source src="VIDEOS Y FOTOS/Copia de Video 3 pablo.mov" type="video/mp4">
-          </video>
-          <p class="video-label">Entrenamiento #3</p>
-        </div>
-
-      </div>
+      <h2 class="section-title" style="margin-bottom: 24px;">Videos</h2>
     </div>
+
+    <div class="vid-carousel" id="vidCarousel">
+
+      <!-- Slide 1 -->
+      <div class="vid-slide active">
+        <video autoplay loop muted playsinline preload="auto">
+          <source src="VIDEOS Y FOTOS/Copia de video 1 pablo.mp4" type="video/mp4">
+        </video>
+      </div>
+
+      <!-- Slide 2 -->
+      <div class="vid-slide">
+        <video loop muted playsinline preload="metadata">
+          <source src="VIDEOS Y FOTOS/Copia de Video 2 pablo.MOV" type="video/mp4">
+        </video>
+      </div>
+
+      <!-- Slide 3 -->
+      <div class="vid-slide">
+        <video loop muted playsinline preload="metadata">
+          <source src="VIDEOS Y FOTOS/Copia de Video 3 pablo.mov" type="video/mp4">
+        </video>
+      </div>
+
+      <!-- Flechas -->
+      <button class="vid-arrow prev" onclick="vidNav(-1)">&#8249;</button>
+      <button class="vid-arrow next" onclick="vidNav(1)">&#8250;</button>
+
+      <!-- Mute toggle -->
+      <button class="vid-mute" id="vidMuteBtn" onclick="vidToggleMute()">🔇</button>
+    </div>
+
+    <!-- Dots -->
+    <div class="vid-dots">
+      <button class="vid-dot active" onclick="vidGo(0)"></button>
+      <button class="vid-dot" onclick="vidGo(1)"></button>
+      <button class="vid-dot" onclick="vidGo(2)"></button>
+    </div>
+
+    <div style="padding-bottom: 72px;"></div>
   </section>
+
+  <script>
+    (function() {
+      let cur = 0;
+      const slides = document.querySelectorAll('.vid-slide');
+      const dots   = document.querySelectorAll('.vid-dot');
+      const muteBtn = document.getElementById('vidMuteBtn');
+      let isMuted = true;
+
+      function activate(idx) {
+        // pause old
+        slides[cur].querySelector('video').pause();
+        slides[cur].classList.remove('active');
+        dots[cur].classList.remove('active');
+        cur = (idx + slides.length) % slides.length;
+        // play new
+        const v = slides[cur].querySelector('video');
+        v.muted = isMuted;
+        v.play();
+        slides[cur].classList.add('active');
+        dots[cur].classList.add('active');
+      }
+
+      window.vidNav = function(dir) { activate(cur + dir); };
+      window.vidGo  = function(idx) { activate(idx); };
+
+      window.vidToggleMute = function() {
+        isMuted = !isMuted;
+        slides.forEach(s => { s.querySelector('video').muted = isMuted; });
+        muteBtn.textContent = isMuted ? '🔇' : '🔊';
+      };
+
+      // Ensure first video plays on load
+      slides[0].querySelector('video').play().catch(() => {});
+    })();
+  </script>
 
 
   <!-- ============================================================
