@@ -28,6 +28,50 @@
       --font-body:  'Inter', sans-serif;
     }
 
+    /* ============================================================
+       MODO CLARO
+    ============================================================ */
+    body.light-mode {
+      --bg:     #f4f4f4;
+      --bg-2:   #eaeaea;
+      --bg-3:   #dedede;
+      --border: #cccccc;
+      --white:  #111111;
+      --gray:   #555555;
+    }
+    body.light-mode #contacto        { background: #ddd; }
+    body.light-mode .hero-tagline    { color: #333; }
+    body.light-mode .cta-instagram   { color: #444; }
+    body.light-mode .footer-text     { color: #666; }
+    body.light-mode .footer-text a   { color: #555; border-color: #bbb; }
+    body.light-mode .sobre-text      { color: #333; }
+
+    /* Botón toggle */
+    #theme-toggle {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 200;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid #444;
+      color: #fff;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(6px);
+      transition: background 0.2s, border-color 0.2s;
+    }
+    body.light-mode #theme-toggle {
+      background: rgba(255,255,255,0.75);
+      border-color: #bbb;
+      color: #333;
+    }
+
     html { scroll-behavior: smooth; }
 
     body {
@@ -529,6 +573,120 @@
     }
 
     /* ============================================================
+       GALERÍA
+    ============================================================ */
+    #galeria {
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    @media (min-width: 600px) {
+      .gallery-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    .gallery-item {
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s;
+    }
+
+    .gallery-item:hover img { transform: scale(1.05); }
+
+    /* ============================================================
+       MODAL CERTIFICADO
+    ============================================================ */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal-box {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 760px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: rgba(0,0,0,0.6);
+      border: none;
+      color: #fff;
+      font-size: 22px;
+      line-height: 1;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+    }
+
+    .modal-close:hover { background: var(--red); }
+
+    .modal-box iframe {
+      display: block;
+      width: 100%;
+      height: 500px;
+      border: none;
+    }
+
+    @media (max-width: 480px) {
+      .modal-box iframe { height: 360px; }
+    }
+
+    /* Botón certificado */
+    .btn-cert {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding: 7px 14px;
+      background: transparent;
+      border: 1px solid var(--red-light);
+      color: var(--red-light);
+      border-radius: 3px;
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .btn-cert:hover { background: var(--red); color: #fff; border-color: var(--red); }
+
+    /* ============================================================
        RESPONSIVE
     ============================================================ */
     @media (min-width: 480px) {
@@ -551,19 +709,26 @@
 
 <body>
 
+  <!-- Botón modo claro/oscuro -->
+  <button id="theme-toggle" title="Cambiar modo" onclick="document.body.classList.toggle('light-mode');this.textContent=document.body.classList.contains('light-mode')?'🌙':'☀️'">☀️</button>
+
+  <!-- Modal certificado mundial -->
+  <div id="modal-cert" class="modal-overlay" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal-box">
+      <button class="modal-close" onclick="document.getElementById('modal-cert').classList.remove('open')">✕</button>
+      <iframe src="https://drive.google.com/file/d/1DrXY7gEZb19EgaHBsyZvx0JnA2SX_j4A/preview"
+              width="100%" height="500px" allow="autoplay"></iframe>
+    </div>
+  </div>
+
   <!-- ============================================================
        HERO
   ============================================================ -->
   <section id="hero">
 
-    <!-- Foto placeholder — reemplazar con <img> cuando tengas la foto -->
-    <div class="hero-photo">
-      <svg class="hero-photo-icon" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="1.5">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-        <circle cx="12" cy="7" r="4"/>
-      </svg>
-      <span class="hero-photo-text">Tu foto aquí</span>
-    </div>
+    <img src="https://drive.google.com/thumbnail?id=1naJekzn4-laKwzAjZG4tr9up0RC46yzE&sz=w1600"
+         alt="Pablo Giraldo"
+         style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top;">
 
     <div class="hero-overlay"></div>
 
@@ -696,6 +861,9 @@
           <div class="achievement-info">
             <div class="achievement-title">Mundial OCAMM / GAMMA World Championship 2025</div>
             <div class="achievement-detail">Brasil · 2025</div>
+            <button class="btn-cert" onclick="document.getElementById('modal-cert').classList.add('open')">
+              🏅 Ver certificado
+            </button>
           </div>
         </div>
 
@@ -728,6 +896,40 @@
           </div>
         </div>
 
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ============================================================
+       GALERÍA
+  ============================================================ -->
+  <section id="galeria" class="section">
+    <div class="container">
+      <p class="section-label">Imágenes</p>
+      <h2 class="section-title">Galería</h2>
+      <div class="gallery-grid">
+        <div class="gallery-item">
+          <img src="https://drive.google.com/thumbnail?id=1agV60FWjlO8lzZmdTiHWFJjRnnZzIJhX&sz=w800" alt="Pablo Giraldo" loading="lazy">
+        </div>
+        <div class="gallery-item">
+          <img src="https://drive.google.com/thumbnail?id=1nDUMxrmMD3mXsEJkSiI2Rwnd7xGfpYCa&sz=w800" alt="Pablo Giraldo" loading="lazy">
+        </div>
+        <div class="gallery-item">
+          <img src="https://drive.google.com/thumbnail?id=1-ovJjEroDoYAQd9QPpbgWPCzinoTqoGp&sz=w800" alt="Pablo Giraldo" loading="lazy">
+        </div>
+        <div class="gallery-item">
+          <img src="https://drive.google.com/thumbnail?id=1ri9GxKV_wY1UTcbWLbYVZWkzUiUEgEJQ&sz=w800" alt="Pablo Giraldo" loading="lazy">
+        </div>
+        <div class="gallery-item">
+          <img src="https://drive.google.com/thumbnail?id=1y6VTo1ox3a3wJ3Sa6fCwhXNCtQiISYYK&sz=w800" alt="Pablo Giraldo" loading="lazy">
+        </div>
+        <div class="gallery-item">
+          <img src="https://drive.google.com/thumbnail?id=1vXR5hTsUrWOd0-eXk5FTwvbxX50VIAPO&sz=w800" alt="Pablo Giraldo" loading="lazy">
+        </div>
+        <div class="gallery-item">
+          <img src="https://drive.google.com/thumbnail?id=1hiLAsAcXtAZJ_w3I2rZ8iwaE3oJBHl7n&sz=w800" alt="Pablo Giraldo" loading="lazy">
+        </div>
       </div>
     </div>
   </section>
