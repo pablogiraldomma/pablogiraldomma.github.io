@@ -680,59 +680,68 @@
     #entrenamientos { background: var(--bg); }
 
     .plans-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
-    }
-
-    @media (max-width: 600px) {
-      .plans-grid { grid-template-columns: 1fr; gap: 24px; }
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
     }
 
     .plan-card {
-      background: var(--bg-3);
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      padding: 44px 22px 28px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      transition: border-color 0.2s;
+      background: #111;
+      border: 1px solid #333;
+      border-top: 3px solid #cc0000;
+      border-radius: 8px;
+      padding: 50px 40px;
+      text-align: center;
+      max-width: 360px;
+      width: 100%;
       position: relative;
+      transition: transform 0.2s, border-color 0.2s;
     }
 
-    .plan-card:hover { border-color: var(--red); }
+    .plan-card:hover { transform: translateY(-4px); }
 
-    .plan-card.featured { border-color: var(--red); }
+    .plan-card.featured { border: 2px solid #cc0000; border-top: 3px solid #cc0000; }
+
+    .plan-number {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 5rem;
+      color: #cc0000;
+      line-height: 1;
+      display: block;
+      margin-bottom: 8px;
+    }
 
     .plan-badge {
       position: absolute;
-      top: -15px;
+      top: -16px;
       left: 50%;
       transform: translateX(-50%);
-      background: var(--red);
+      background: #cc0000;
       color: #fff;
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 700;
       letter-spacing: 2px;
       text-transform: uppercase;
-      padding: 5px 14px;
+      padding: 5px 16px;
       border-radius: 20px;
       white-space: nowrap;
+      font-family: 'Oswald', sans-serif;
     }
 
     .plan-name {
-      font-family: var(--font-title);
-      font-size: 22px;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: #fff;
+      font-family: 'Cinzel', serif;
+      font-size: 1.4rem;
+      color: #ffffff;
+      letter-spacing: 4px;
+      margin-bottom: 16px;
+      display: block;
     }
 
     .plan-desc {
       font-size: 14px;
       color: var(--gray);
-      line-height: 1.6;
+      line-height: 1.7;
     }
 
     /* Botón único centrado */
@@ -1301,35 +1310,30 @@
   ============================================================ -->
   <section id="entrenamientos" class="section">
     <div class="container">
-      <p class="section-label">Programas</p>
-      <h2 class="section-title">Entrenamientos</h2>
+      <p class="section-label" style="text-align:center;">Programas</p>
+      <h2 class="section-title" style="text-align:center;">Planes</h2>
 
       <div class="plans-grid">
+
         <div class="plan-card">
-          <div class="plan-name">Plan 10 Clases</div>
-          <p class="plan-desc">
-            Paquete de 10 sesiones personalizadas. Ideal para establecer
-            una rutina y trabajar fundamentos técnicos a tu ritmo.
-          </p>
+          <span class="plan-number">10</span>
+          <span class="plan-name">Clases</span>
+          <p class="plan-desc">Paquete ideal para establecer una rutina y trabajar fundamentos técnicos.</p>
         </div>
 
         <div class="plan-card featured">
           <span class="plan-badge">Más popular</span>
-          <div class="plan-name">Plan 15 Clases</div>
-          <p class="plan-desc">
-            15 sesiones para un progreso más sólido. Más continuidad,
-            mejores resultados. Recomendado para quienes buscan
-            resultados concretos.
-          </p>
+          <span class="plan-number">15</span>
+          <span class="plan-name">Clases</span>
+          <p class="plan-desc">15 sesiones para un progreso sólido. Más continuidad, mejores resultados.</p>
         </div>
 
         <div class="plan-card">
-          <div class="plan-name">Clase Individual</div>
-          <p class="plan-desc">
-            Una sola sesión para probar la metodología, trabajar un
-            aspecto específico o prepararte para una competencia puntual.
-          </p>
+          <span class="plan-number">1</span>
+          <span class="plan-name">Clase Individual</span>
+          <p class="plan-desc">Una sesión para probar la metodología o prepararte para una competencia.</p>
         </div>
+
       </div>
 
       <div class="plans-cta">
