@@ -201,29 +201,6 @@
       margin-bottom: 36px;
     }
 
-    .login-tabs {
-      display: flex;
-      gap: 2px;
-      margin-bottom: 28px;
-      background: #0a0a0a;
-      border-radius: 4px;
-      padding: 3px;
-    }
-
-    .login-tab {
-      flex: 1;
-      background: #1a1a1a;
-      border: none;
-      color: #888;
-      padding: 8px;
-      border-radius: 3px;
-      font-size: 13px;
-      font-weight: 600;
-      transition: background 0.2s, color 0.2s;
-    }
-
-    .login-tab.active { background: #cc0000; color: #fff; }
-
     /* ===== FORMS ===== */
     .form-group {
       margin-bottom: 16px;
@@ -603,38 +580,18 @@
     </div>
     <p class="login-subtitle">Portal de Alumnos · Pablo Giraldo MMA</p>
 
-    <div class="login-tabs">
-      <button class="login-tab active" onclick="switchLoginTab('admin')" id="tab-admin">Admin</button>
-      <button class="login-tab" onclick="switchLoginTab('alumno')" id="tab-alumno">Alumno</button>
-    </div>
-
     <div id="alert-login"></div>
 
-    <!-- Admin login -->
-    <div id="login-admin-form">
-      <div class="form-group">
-        <label>Correo</label>
-        <input type="email" id="admin-email" placeholder="pablogiraldomma@gmail.com" />
-      </div>
-      <div class="form-group">
-        <label>Contraseña</label>
-        <input type="password" id="admin-password" placeholder="••••••••" />
-      </div>
-      <button class="btn btn-primary btn-full mt-16" onclick="loginAdmin()">Entrar como Admin</button>
+    <div class="form-group">
+      <label>Usuario / Documento</label>
+      <input type="text" id="login-doc" placeholder="Tu documento de identidad" autocomplete="username" />
     </div>
-
-    <!-- Alumno login -->
-    <div id="login-alumno-form" style="display:none;">
-      <div class="form-group">
-        <label>Documento de identidad</label>
-        <input type="text" id="alumno-doc" placeholder="Tu número de documento" />
-      </div>
-      <div class="form-group">
-        <label>Contraseña</label>
-        <input type="password" id="alumno-password" placeholder="••••••••" />
-      </div>
-      <button class="btn btn-primary btn-full mt-16" onclick="loginAlumno()">Entrar al Portal</button>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')login()" />
     </div>
+    <button class="btn btn-primary btn-full mt-16" onclick="login()">Entrar</button>
   </div>
 </div>
 
@@ -765,8 +722,6 @@
     'https://wckurwybqwvsbqkfzmrd.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indja3Vyd3licXd2c2Jxa2Z6bXJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMjQ4NTcsImV4cCI6MjA5NzkwMDg1N30.TRgkfbMk8PudolXsLphlNGFSXXBHK0msBpeC1kh2Ftw'
   );
-
-  const ADMIN_EMAIL = 'pablogiraldomma@gmail.com';
 
   // ===== STATE =====
   let session = null;    // { role: 'admin'|'alumno', user: {...}, alumno: {...} }
@@ -909,53 +864,35 @@
     if (views[view]) views[view]();
   }
 
-  // ===== LOGIN =====
-  function switchLoginTab(tab) {
-    document.getElementById('tab-admin').classList.toggle('active', tab === 'admin');
-    document.getElementById('tab-alumno').classList.toggle('active', tab === 'alumno');
-    document.getElementById('login-admin-form').style.display  = tab === 'admin'  ? '' : 'none';
-    document.getElementById('login-alumno-form').style.display = tab === 'alumno' ? '' : 'none';
-    clearAlert('alert-login');
-  }
-
-  async function loginAdmin() {
-    const email = document.getElementById('admin-email').value.trim();
-    const pass  = document.getElementById('admin-password').value;
-    clearAlert('alert-login');
-
-    if (email !== ADMIN_EMAIL) {
-      showAlert('alert-login', 'error', 'Solo el administrador puede acceder con este formulario.');
-      return;
-    }
-
-    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-    if (error) { showAlert('alert-login', 'error', error.message); return; }
-
-    session = { role: 'admin', user: data.user };
-    localStorage.setItem('pg_session', JSON.stringify(session));
-    showApp();
-    navigate('admin-alumnos');
-  }
-
-  async function loginAlumno() {
-    const doc  = document.getElementById('alumno-doc').value.trim();
-    const pass = document.getElementById('alumno-password').value.trim();
+  // ===== LOGIN UNIFICADO =====
+  async function login() {
+    const doc  = document.getElementById('login-doc').value.trim();
+    const pass = document.getElementById('login-pass').value.trim();
     clearAlert('alert-login');
 
     if (!doc || !pass) {
-      showAlert('alert-login', 'error', 'Completa todos los campos.');
+      showAlert('alert-login', 'error', 'Completa usuario y contraseña.');
       return;
     }
 
-    // Buscar alumno por documento + contraseña
+    // Admin hardcodeado
+    if (doc.toUpperCase() === 'ADMIN' && pass === 'pablo2025') {
+      session = { role: 'admin' };
+      localStorage.setItem('pg_session', JSON.stringify(session));
+      showApp();
+      navigate('admin-alumnos');
+      return;
+    }
+
+    // Alumno: buscar en Supabase
     const { data, error } = await sb
       .from('alumnos')
       .select('*')
       .eq('documento', doc)
       .eq('pass_alumno', pass)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
+    if (!data) {
       showAlert('alert-login', 'error', 'Documento o contraseña incorrectos.');
       return;
     }
@@ -966,8 +903,7 @@
     navigate('alumno-dashboard');
   }
 
-  async function logout() {
-    await sb.auth.signOut().catch(() => {});
+  function logout() {
     session = null;
     localStorage.removeItem('pg_session');
     showLogin();
