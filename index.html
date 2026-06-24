@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="Logo_Pablo_giraldo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700;900&family=Inter:wght@400;500;600&family=Bebas+Neue&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700;900&family=Inter:wght@400;500;600&family=Bebas+Neue&family=Cinzel:wght@600&display=swap" rel="stylesheet" />
 
   <style>
     /* ============================================================
@@ -394,31 +394,30 @@
     .discipline-card {
       background: var(--bg-3);
       border: 1px solid var(--border);
+      border-top: 2px solid #cc0000;
       border-radius: 3px;
-      padding: 24px 14px;
+      padding: 24px 16px;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 10px;
       flex: 0 0 calc(25% - 8px);
       min-width: 110px;
+      text-align: center;
       transition: border-color 0.2s, background 0.2s;
     }
 
     .discipline-card:hover {
-      border-color: var(--red);
       background: #1e0000;
     }
 
-    .discipline-icon { font-size: 26px; line-height: 1; }
-
     .discipline-name {
-      font-family: var(--font-title);
-      font-size: 12px;
+      font-family: 'Cinzel', serif;
+      font-size: 1rem;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #fff;
+      letter-spacing: 3px;
+      color: #ffffff;
       text-align: center;
     }
 
@@ -1112,31 +1111,24 @@
       <h2 class="section-title">Disciplinas</h2>
       <div class="disciplines-grid">
         <div class="discipline-card">
-          <span class="discipline-icon">🥊</span>
           <span class="discipline-name">MMA</span>
         </div>
         <div class="discipline-card">
-          <span class="discipline-icon">🥋</span>
           <span class="discipline-name">Jiu Jitsu</span>
         </div>
         <div class="discipline-card">
-          <span class="discipline-icon">🦵</span>
           <span class="discipline-name">Muay Thai / Kickboxing</span>
         </div>
         <div class="discipline-card">
-          <span class="discipline-icon">🥊</span>
           <span class="discipline-name">Boxeo</span>
         </div>
         <div class="discipline-card">
-          <span class="discipline-icon">🤼</span>
           <span class="discipline-name">Wrestling</span>
         </div>
         <div class="discipline-card">
-          <span class="discipline-icon">🤸</span>
           <span class="discipline-name">Grappling</span>
         </div>
         <div class="discipline-card">
-          <span class="discipline-icon">💪</span>
           <span class="discipline-name">Acondicionamiento Físico</span>
         </div>
       </div>
