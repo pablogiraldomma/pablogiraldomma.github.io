@@ -181,8 +181,8 @@
     }
 
     .login-box {
-      background: var(--bg2);
-      border: 1px solid var(--border);
+      background: #111;
+      border: 1px solid #333;
       border-radius: 8px;
       padding: 48px 40px;
       width: 100%;
@@ -190,11 +190,6 @@
     }
 
     .login-logo {
-      font-family: var(--font-t);
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--red);
-      letter-spacing: 3px;
       text-align: center;
       margin-bottom: 8px;
     }
@@ -210,16 +205,16 @@
       display: flex;
       gap: 2px;
       margin-bottom: 28px;
-      background: var(--bg3);
+      background: #0a0a0a;
       border-radius: 4px;
       padding: 3px;
     }
 
     .login-tab {
       flex: 1;
-      background: transparent;
+      background: #1a1a1a;
       border: none;
-      color: var(--gray);
+      color: #888;
       padding: 8px;
       border-radius: 3px;
       font-size: 13px;
@@ -227,7 +222,7 @@
       transition: background 0.2s, color 0.2s;
     }
 
-    .login-tab.active { background: var(--red); color: #fff; }
+    .login-tab.active { background: #cc0000; color: #fff; }
 
     /* ===== FORMS ===== */
     .form-group {
@@ -248,9 +243,9 @@
     .form-group select,
     .form-group textarea {
       width: 100%;
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      color: var(--white);
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #f0f0f0;
       padding: 10px 14px;
       border-radius: 4px;
       font-size: 14px;
@@ -261,7 +256,7 @@
     .form-group select:focus,
     .form-group textarea:focus {
       outline: none;
-      border-color: var(--red);
+      border-color: #cc0000;
     }
 
     .form-group textarea { resize: vertical; min-height: 80px; }
@@ -286,7 +281,8 @@
     .btn:hover { opacity: 0.85; transform: translateY(-1px); }
     .btn:active { transform: translateY(0); }
 
-    .btn-primary { background: var(--red); color: #fff; }
+    .btn-primary { background: #cc0000; color: #fff; }
+    .btn-primary:hover { background: #aa0000; opacity: 1; }
     .btn-secondary { background: var(--bg3); color: var(--white); border: 1px solid var(--border); }
     .btn-green { background: var(--green); color: #000; }
     .btn-yellow { background: var(--yellow); color: #000; }
@@ -582,7 +578,9 @@
 <!-- ===== NAVBAR ===== -->
 <nav id="navbar" style="display:none;">
   <div class="nav-inner">
-    <div class="nav-logo">PG</div>
+    <div class="nav-logo">
+      <img src="Logo_Pablo_giraldo.png" alt="PG" style="height:44px;width:auto;filter:invert(1);">
+    </div>
     <ul class="nav-links" id="nav-links-list"></ul>
     <div class="nav-right">
       <span class="nav-user" id="nav-user-name"></span>
@@ -600,7 +598,9 @@
 <!-- ===== LOGIN ===== -->
 <div id="screen-login">
   <div class="login-box">
-    <div class="login-logo">PG</div>
+    <div class="login-logo">
+      <img src="Logo_Pablo_giraldo.png" alt="Pablo Giraldo" style="height:80px;width:auto;filter:invert(1);">
+    </div>
     <p class="login-subtitle">Portal de Alumnos · Pablo Giraldo MMA</p>
 
     <div class="login-tabs">
