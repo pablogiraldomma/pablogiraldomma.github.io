@@ -76,7 +76,7 @@
       flex-shrink: 0;
     }
 
-    #navbar-logo { height: 70px; width: auto; filter: invert(1); }
+    #navbar-logo { height: 90px; width: auto; filter: invert(1); }
 
     .nav-links {
       display: flex;
@@ -1073,15 +1073,7 @@
 
 
 <!-- HERO -->
-<section id="hero" style="position:relative;height:100vh;overflow:hidden;background-image:linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.7)),url('https://drive.google.com/thumbnail?id=1naJekzn4-laKwzAjZG4tr9up0RC46yzE&sz=w1600');background-size:cover;background-position:center top;">
-
-  <!-- Marquee texto de fondo — centrado verticalmente -->
-  <div style="position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);overflow:hidden;z-index:1;pointer-events:none;">
-    <div id="marquee-track" style="display:flex;white-space:nowrap;will-change:transform;">
-      <span style="font-family:'Oswald',sans-serif;font-size:22vw;font-weight:900;color:rgba(255,255,255,0.06);text-transform:uppercase;padding-right:80px;letter-spacing:-4px;display:inline-block;line-height:1;">PABLO GIRALDO</span>
-      <span style="font-family:'Oswald',sans-serif;font-size:22vw;font-weight:900;color:rgba(255,255,255,0.06);text-transform:uppercase;padding-right:80px;letter-spacing:-4px;display:inline-block;line-height:1;" aria-hidden="true">PABLO GIRALDO</span>
-    </div>
-  </div>
+<section id="hero" style="position:relative;height:100vh;overflow:hidden;background-image:linear-gradient(rgba(0,0,0,0.35),rgba(0,0,0,0.35)),url('https://drive.google.com/thumbnail?id=1naJekzn4-laKwzAjZG4tr9up0RC46yzE&sz=w1600');background-size:cover;background-position:center center;">
 
   <!-- Degradado inferior -->
   <div style="position:absolute;bottom:0;left:0;right:0;height:350px;background:linear-gradient(transparent,#0a0a0a);z-index:3;pointer-events:none;"></div>
@@ -1099,23 +1091,6 @@
   </div>
 </section>
 
-<!-- JS Marquee -->
-<script>
-(function(){
-  const track = document.getElementById('marquee-track');
-  if(!track) return;
-  let pos = 0;
-  const speed = 0.5;
-  const halfW = track.scrollWidth / 2;
-  function animate(){
-    pos -= speed;
-    if(Math.abs(pos) >= halfW) pos = 0;
-    track.style.transform = 'translateX(' + pos + 'px)';
-    requestAnimationFrame(animate);
-  }
-  animate();
-})();
-</script>
 
 
   <!-- ============================================================
