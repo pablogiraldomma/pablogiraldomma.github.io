@@ -67,7 +67,7 @@
       height: 100%;
       max-width: 1200px;
       margin: 0 auto;
-      padding: 0 40px;
+      padding: 25px 40px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -79,7 +79,7 @@
       flex-shrink: 0;
     }
 
-    #navbar-logo { height: 40px; width: auto; filter: invert(1); }
+    #navbar-logo { height: 50px; width: auto; filter: invert(1); }
 
     .nav-links {
       display: flex;
@@ -262,10 +262,10 @@
       transform: translate(-50%, -50%);
       font-family: var(--font-title);
       font-weight: 900;
-      font-size: clamp(60px, 18vw, 220px);
+      font-size: 22vw;
       text-transform: uppercase;
       letter-spacing: -2px;
-      color: rgba(220,220,220,0.18);
+      color: rgba(255,255,255,0.08);
       white-space: nowrap;
       pointer-events: none;
       z-index: 1;
@@ -279,9 +279,8 @@
       bottom: 0;
       left: 50%;
       transform: translateX(-50%);
-      height: 90%;
+      height: 90vh;
       width: auto;
-      max-width: 600px;
       object-fit: contain;
       object-position: bottom;
       z-index: 2;
@@ -1084,10 +1083,10 @@
   <section id="hero">
 
     <!-- Texto gigante parallax de fondo -->
-    <div class="hero-bg-text" id="parallaxText">PABLO GIRALDO</div>
+    <div class="hero-bg-text" id="parallax-text">PABLO GIRALDO</div>
 
-    <!-- Foto principal (reemplazar por pablo-silueta.png cuando esté disponible) -->
-    <img src="https://drive.google.com/thumbnail?id=1naJekzn4-laKwzAjZG4tr9up0RC46yzE&sz=w1600"
+    <!-- Silueta PNG sin fondo -->
+    <img src="pablo-silueta.png"
          alt="Pablo Giraldo"
          class="hero-photo">
 
@@ -1539,13 +1538,13 @@
   ============================================================ -->
   <script>
     /* --- Parallax hero text --- */
-    (function() {
-      var pt = document.getElementById('parallaxText');
-      if (!pt) return;
-      window.addEventListener('scroll', function() {
-        pt.style.transform = 'translate(-50%, calc(-50% + ' + (window.scrollY * 0.4) + 'px))';
+    const parallaxText = document.getElementById('parallax-text');
+    if (parallaxText) {
+      window.addEventListener('scroll', () => {
+        parallaxText.style.transform =
+          `translate(-50%, calc(-50% + ${window.scrollY * 0.5}px))`;
       }, { passive: true });
-    })();
+    }
 
     /* --- Carrusel automático "Sobre mí" --- */
     (function() {
