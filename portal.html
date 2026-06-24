@@ -506,16 +506,39 @@
     .back-btn {
       background: transparent;
       border: none;
-      color: var(--gray);
-      font-size: 13px;
-      font-family: var(--font-b);
-      display: flex;
+      color: #cc0000;
+      font-size: 14px;
+      font-family: 'Oswald', sans-serif;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      display: inline-flex;
       align-items: center;
       gap: 6px;
       margin-bottom: 20px;
+      padding: 0;
     }
 
     .back-btn:hover { color: #fff; }
+
+    #top-back-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: #cc0000;
+      font-size: 14px;
+      font-family: 'Oswald', sans-serif;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 8px 24px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      width: 100%;
+      text-align: left;
+    }
+
+    #top-back-btn:hover { color: #fff; }
 
     .warning-box {
       background: rgba(204,0,0,0.08);
@@ -598,6 +621,7 @@
 <!-- ===== MAIN APP ===== -->
 <div id="app" style="display:none;">
   <div class="page-wrap">
+    <button id="top-back-btn" onclick="goBack()">← Volver</button>
     <div class="container" id="main-content"></div>
   </div>
 </div>
@@ -724,8 +748,26 @@
   );
 
   // ===== STATE =====
-  let session = null;    // { role: 'admin'|'alumno', user: {...}, alumno: {...} }
-  let currentView = '';  // current admin view
+  let session = null;
+  let currentView = '';
+  let viewHistory = [];  // stack de vistas para navegación hacia atrás
+
+  function goBack() {
+    viewHistory.pop(); // quitar vista actual
+    if (viewHistory.length === 0) {
+      window.location.href = 'index.html';
+    } else {
+      const prev = viewHistory[viewHistory.length - 1];
+      viewHistory.pop(); // navigate() lo va a volver a agregar
+      navigate(prev);
+    }
+  }
+
+  function updateBackBtn() {
+    const btn = document.getElementById('top-back-btn');
+    if (!btn) return;
+    btn.style.display = 'block';
+  }
 
   // ===== INIT =====
   window.addEventListener('DOMContentLoaded', () => {
@@ -845,10 +887,13 @@
   }
 
   function navigate(view) {
+    viewHistory.push(view);
     currentView = view;
+    updateBackBtn();
     // Update active nav
     document.querySelectorAll('.nav-links a').forEach(a => {
-      a.classList.toggle('active', a.getAttribute('onclick').includes(`'${view}'`));
+      const oc = a.getAttribute('onclick') || '';
+      a.classList.toggle('active', oc.includes(`'${view}'`));
     });
 
     const views = {
@@ -905,6 +950,7 @@
 
   function logout() {
     session = null;
+    viewHistory = [];
     localStorage.removeItem('pg_session');
     showLogin();
   }
