@@ -50,31 +50,11 @@
     body.light-mode .footer-text a { color: #555; border-color: #bbb; }
     body.light-mode .sobre-text    { color: #333; }
 
-    /* Botón toggle */
-    #theme-toggle {
-      position: fixed;
-      top: 14px;
-      right: 14px;
-      z-index: 200;
-      background: rgba(0,0,0,0.5);
-      border: 1px solid #444;
-      color: #fff;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      cursor: pointer;
-      font-size: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(6px);
-      transition: background 0.2s, border-color 0.2s;
-    }
-    body.light-mode #theme-toggle {
-      background: rgba(255,255,255,0.75);
-      border-color: #bbb;
-      color: #333;
-    }
+    /* Logo navbar — filter por modo */
+    #navbar-logo { filter: invert(1); transition: filter 0.3s; }
+    body.light-mode #navbar-logo { filter: invert(0); }
+    @media (prefers-color-scheme: light) { #navbar-logo { filter: invert(0); } }
+    @media (prefers-color-scheme: dark)  { #navbar-logo { filter: invert(1); } }
 
     html { scroll-behavior: smooth; }
 
@@ -116,26 +96,25 @@
       padding: 0 20px;
       display: flex;
       align-items: center;
-      gap: 0;
+      position: relative;
     }
 
     .nav-logo {
-      font-family: var(--font-title);
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--red-light);
-      letter-spacing: 2px;
       text-decoration: none;
       flex-shrink: 0;
-      margin-right: 32px;
+      display: flex;
+      align-items: center;
     }
 
+    /* Links centrados absolutamente */
     .nav-links {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
       display: flex;
       align-items: center;
       gap: 4px;
       list-style: none;
-      flex: 1;
     }
 
     .nav-links a {
@@ -158,31 +137,32 @@
     body.light-mode .nav-links a { color: #555; }
     body.light-mode .nav-links a:hover { color: #111; background: rgba(0,0,0,0.06); }
 
+    /* Solo el burger en desktop (oculto) / móvil (visible) */
     .nav-right {
+      margin-left: auto;
       display: flex;
       align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
     }
 
-    /* Theme toggle inside navbar */
+    /* Theme toggle — dentro de #nav-mobile */
     #theme-toggle {
       background: transparent;
-      border: 1px solid rgba(255,255,255,0.15);
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.08);
       color: #ccc;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
+      padding: 12px 24px;
       cursor: pointer;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s;
+      font-size: 15px;
+      font-family: var(--font-body);
+      font-weight: 500;
+      width: 100%;
+      text-align: left;
+      transition: background 0.2s, color 0.2s;
     }
 
-    #theme-toggle:hover { background: rgba(255,255,255,0.1); }
-    body.light-mode #theme-toggle { border-color: rgba(0,0,0,0.2); color: #555; }
+    #theme-toggle:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    body.light-mode #theme-toggle { color: #444; border-top-color: rgba(0,0,0,0.08); }
+    body.light-mode #theme-toggle:hover { color: #111; }
 
     /* Hamburger */
     #nav-burger {
@@ -1136,7 +1116,9 @@
   <!-- NAVBAR -->
   <nav id="navbar">
     <div class="nav-inner">
-      <a href="#hero" class="nav-logo">PG</a>
+      <a href="#hero" class="nav-logo">
+        <img src="Logo_Pablo_giraldo.png" alt="Pablo Giraldo" id="navbar-logo" style="height:45px;width:auto;">
+      </a>
       <ul class="nav-links">
         <li><a href="#hero">Inicio</a></li>
         <li><a href="#disciplinas">Disciplinas</a></li>
@@ -1146,8 +1128,6 @@
         <li><a href="#apoyame">Apóyame</a></li>
       </ul>
       <div class="nav-right">
-        <button id="theme-toggle" title="Cambiar modo"
-          onclick="document.body.classList.toggle('light-mode');this.textContent=document.body.classList.contains('light-mode')?'🌙':'☀️'">☀️</button>
         <button id="nav-burger" aria-label="Menú" onclick="document.getElementById('nav-mobile').classList.toggle('open')">☰</button>
       </div>
     </div>
@@ -1161,6 +1141,8 @@
     <a href="#palmares"       onclick="document.getElementById('nav-mobile').classList.remove('open')">Logros</a>
     <a href="#entrenamientos" onclick="document.getElementById('nav-mobile').classList.remove('open')">Entrenamientos</a>
     <a href="#apoyame"        onclick="document.getElementById('nav-mobile').classList.remove('open')">Apóyame</a>
+    <button id="theme-toggle" title="Cambiar modo"
+      onclick="document.body.classList.toggle('light-mode');this.textContent=document.body.classList.contains('light-mode')?'🌙 Modo claro':'☀️ Modo oscuro'">☀️ Modo oscuro</button>
   </div>
 
   <!-- Modal Nequi -->
