@@ -113,6 +113,19 @@
 
     .nav-links a:hover::after { width: 100%; }
 
+    /* Link Portal — botón rojo destacado */
+    .nav-links .nav-portal {
+      background: #cc0000;
+      color: #fff !important;
+      padding: 8px 18px;
+      border-radius: 4px;
+      font-family: 'Oswald', sans-serif;
+      letter-spacing: 2px;
+    }
+
+    .nav-links .nav-portal::after { display: none; }
+    .nav-links .nav-portal:hover { background: #aa0000 !important; }
+
     #nav-burger {
       display: none;
       background: transparent;
@@ -1051,11 +1064,13 @@
       </a>
       <ul class="nav-links">
         <li><a href="#hero">Inicio</a></li>
-        <li><a href="#disciplinas">Disciplinas</a></li>
         <li><a href="#sobre">Sobre mí</a></li>
+        <li><a href="#disciplinas">Disciplinas</a></li>
         <li><a href="#palmares">Logros</a></li>
         <li><a href="#entrenamientos">Planes</a></li>
+        <li><a href="#videos">Videos</a></li>
         <li><a href="#apoyame">Apóyame</a></li>
+        <li><a href="portal.html" class="nav-portal">Portal</a></li>
       </ul>
       <button id="nav-burger" aria-label="Menú" onclick="document.getElementById('nav-mobile').classList.toggle('open')">☰</button>
     </div>
@@ -1064,11 +1079,13 @@
   <!-- Menú móvil -->
   <div id="nav-mobile">
     <a href="#hero"           onclick="document.getElementById('nav-mobile').classList.remove('open')">Inicio</a>
-    <a href="#disciplinas"    onclick="document.getElementById('nav-mobile').classList.remove('open')">Disciplinas</a>
     <a href="#sobre"          onclick="document.getElementById('nav-mobile').classList.remove('open')">Sobre mí</a>
+    <a href="#disciplinas"    onclick="document.getElementById('nav-mobile').classList.remove('open')">Disciplinas</a>
     <a href="#palmares"       onclick="document.getElementById('nav-mobile').classList.remove('open')">Logros</a>
-    <a href="#entrenamientos" onclick="document.getElementById('nav-mobile').classList.remove('open')">Entrenamientos</a>
+    <a href="#entrenamientos" onclick="document.getElementById('nav-mobile').classList.remove('open')">Planes</a>
+    <a href="#videos"         onclick="document.getElementById('nav-mobile').classList.remove('open')">Videos</a>
     <a href="#apoyame"        onclick="document.getElementById('nav-mobile').classList.remove('open')">Apóyame</a>
+    <a href="portal.html" style="color:#cc0000;font-weight:700;">Portal →</a>
   </div>
 
   <!-- Modal Nequi -->
