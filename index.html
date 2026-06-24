@@ -1142,7 +1142,7 @@
     <a href="#entrenamientos" onclick="document.getElementById('nav-mobile').classList.remove('open')">Entrenamientos</a>
     <a href="#apoyame"        onclick="document.getElementById('nav-mobile').classList.remove('open')">Apóyame</a>
     <button id="theme-toggle" title="Cambiar modo"
-      onclick="document.body.classList.toggle('light-mode');this.textContent=document.body.classList.contains('light-mode')?'🌙 Modo claro':'☀️ Modo oscuro'">☀️ Modo oscuro</button>
+      onclick="document.body.classList.toggle('light-mode');this.textContent=document.body.classList.contains('light-mode')?'🌙 Modo claro':'☀️ Modo oscuro';updateLogo(document.body.classList.contains('light-mode')?'light':'dark')">☀️ Modo oscuro</button>
   </div>
 
   <!-- Modal Nequi -->
@@ -1637,6 +1637,22 @@
        JAVASCRIPT
   ============================================================ -->
   <script>
+    /* --- Logo dinámico según modo --- */
+    var logo = document.getElementById('navbar-logo');
+
+    function updateLogo(theme) {
+      if (!logo) return;
+      logo.style.filter = theme === 'dark' ? 'invert(1)' : 'invert(0)';
+    }
+
+    // Detectar tema inicial
+    (function() {
+      var isDark = document.body.classList.contains('light-mode') ? false
+        : !window.matchMedia || window.matchMedia('(prefers-color-scheme: light)').matches ? false
+        : true;
+      updateLogo(isDark ? 'dark' : 'light');
+    })();
+
     /* --- Carrusel automático "Sobre mí" --- */
     (function() {
       const imgs = document.querySelectorAll('#sobreCarousel img');
