@@ -1090,117 +1090,165 @@
 
   async function adminVerAlumno(alumno) {
     const content = document.getElementById('main-content');
+    content.innerHTML = '<p class="text-gray" style="padding:32px;">Cargando...</p>';
 
-    // Fetch fresh data
     const { data: a } = await sb.from('alumnos').select('*').eq('id', alumno.id).single();
     if (!a) return;
 
     const restantes = (a.clases_total || 0) - (a.clases_tomadas || 0);
     const pct = a.clases_total ? Math.round((a.clases_tomadas / a.clases_total) * 100) : 0;
     const dias = daysUntil(a.vencimiento);
+    const vencido = dias !== null && dias < 0;
 
-    // Load confirmaciones
     const { data: confirmaciones } = await sb
-      .from('confirmaciones')
-      .select('*')
-      .eq('alumno_id', a.id)
-      .order('fecha', { ascending: false })
-      .limit(20);
+      .from('confirmaciones').select('*').eq('alumno_id', a.id)
+      .order('fecha', { ascending: false }).limit(30);
 
-    // Load pagos
     const { data: pagos } = await sb
-      .from('pagos')
-      .select('*')
-      .eq('alumno_id', a.id)
-      .order('fecha', { ascending: false })
-      .limit(10);
+      .from('pagos').select('*').eq('alumno_id', a.id)
+      .order('fecha', { ascending: false }).limit(3);
 
-    const histConf = (confirmaciones || []).map(c => {
+    // Gráfico asistencia mes actual
+    const ahora = new Date();
+    const anioActual = ahora.getFullYear();
+    const mesActual  = ahora.getMonth();
+    const diasEnMes  = new Date(anioActual, mesActual + 1, 0).getDate();
+    const confMap    = {};
+    (confirmaciones || []).forEach(c => { confMap[c.fecha] = c.estado; });
+
+    const gridCeldas = Array.from({ length: diasEnMes }, (_, i) => {
+      const d = new Date(anioActual, mesActual, i + 1);
+      const key = d.toISOString().split('T')[0];
+      const estado = confMap[key];
+      const color = estado === 'confirmada' ? '#25d366'
+                  : estado === 'cancelada_tardia' ? '#cc0000'
+                  : '#2a2a2a';
+      const tip = estado ? `${key}: ${estado}` : key;
+      return `<div title="${tip}" style="width:16px;height:16px;border-radius:3px;background:${color};flex-shrink:0;"></div>`;
+    }).join('');
+
+    // Historial confirmaciones (últimas 5)
+    const histConf = (confirmaciones || []).slice(0, 5).map(c => {
       const icon = c.estado === 'confirmada' ? '✅' : c.estado === 'aplazada' ? '⚠️' : '❌';
       return `<div class="history-item">
-        <span>${icon} ${c.estado}</span>
-        <span class="text-gray">${fmtDate(c.fecha)}</span>
-        ${c.nota ? `<span class="text-gray" style="font-size:12px;">${c.nota}</span>` : ''}
+        <span>${icon} <span style="text-transform:capitalize;">${c.estado}</span></span>
+        <span class="text-gray" style="font-size:12px;">${fmtDate(c.fecha)}</span>
       </div>`;
-    }).join('') || '<p class="text-gray">Sin historial aún.</p>';
+    }).join('') || '<p class="text-gray" style="font-size:13px;">Sin historial.</p>';
 
+    // Historial pagos (últimos 3)
     const histPagos = (pagos || []).map(p =>
       `<div class="history-item">
-        <span><strong>$${Number(p.monto).toLocaleString('es-CO')}</strong> · ${planLabel(p.plan)}</span>
-        <span class="text-gray">${fmtDate(p.fecha)}</span>
+        <span><strong>$${Number(p.monto).toLocaleString('es-CO')}</strong></span>
+        <span class="text-gray" style="font-size:12px;">${fmtDate(p.fecha)}</span>
       </div>`
-    ).join('') || '<p class="text-gray">Sin pagos registrados.</p>';
+    ).join('') || '<p class="text-gray" style="font-size:13px;">Sin pagos.</p>';
+
+    const planBadgeLabel = { '10_clases': '10 CLASES', '15_clases': '15 CLASES', 'individual': 'INDIVIDUAL' };
 
     content.innerHTML = `
       <button class="back-btn" onclick="navigate('admin-alumnos')">← Volver a alumnos</button>
 
-      <div class="page-header">
-        <div>
-          <div class="section-label-small">Detalle del alumno</div>
-          <div class="page-title">${a.nombre}</div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-secondary btn-sm" onclick='renderAdminForm(${JSON.stringify(a)})'>Editar</button>
-          <button class="btn btn-primary btn-sm" onclick="openModalPago('${a.id}')">Registrar pago</button>
-        </div>
-      </div>
+      <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
 
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-number">${restantes}</div>
-          <div class="stat-label">Clases restantes</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number">${a.clases_tomadas || 0}</div>
-          <div class="stat-label">Clases tomadas</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number" style="font-size:28px;color:${dias !== null && dias < 0 ? 'var(--red)' : 'var(--white)'}">
-            ${dias !== null ? (dias < 0 ? `Venció` : `${dias}d`) : '—'}
+        <!-- COLUMNA IZQUIERDA 30% -->
+        <div style="flex:0 0 280px;min-width:240px;display:flex;flex-direction:column;gap:16px;">
+          <div class="card" style="text-align:center;">
+            <div style="width:120px;height:120px;border-radius:50%;border:3px solid #cc0000;background:#1a1a1a;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-family:'Oswald',sans-serif;font-size:40px;font-weight:700;color:#cc0000;">
+              ${iniciales(a.nombre)}
+            </div>
+            <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#fff;margin-bottom:8px;">${a.nombre}</div>
+            <span style="background:#cc0000;color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;padding:4px 14px;border-radius:20px;font-family:'Oswald',sans-serif;">${planBadgeLabel[a.plan] || a.plan}</span>
           </div>
-          <div class="stat-label">Vencimiento (${fmtDate(a.vencimiento)})</div>
+
+          <div class="card" style="font-size:14px;line-height:2;">
+            <p>📄 ${a.documento || '—'}</p>
+            <p>📱 ${a.celular || '—'}</p>
+            <p>📧 ${a.correo || '—'}</p>
+            <p>🎂 ${fmtDate(a.nacimiento)}</p>
+            <p>📅 ${a.horario_dia || '—'} ${a.horario_hora || ''}</p>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="btn btn-secondary" style="width:100%;justify-content:center;" onclick='renderAdminForm(${JSON.stringify(a)})'>✏️ Editar alumno</button>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="openModalPago('${a.id}')">💰 Registrar pago</button>
+          </div>
+        </div>
+
+        <!-- COLUMNA DERECHA 70% -->
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px;">
+
+          <!-- Fila 1: métricas -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+            <div class="stat-card" style="text-align:center;">
+              <div class="stat-number" style="color:#cc0000;">${restantes}</div>
+              <div class="stat-label">Restantes</div>
+            </div>
+            <div class="stat-card" style="text-align:center;">
+              <div class="stat-number" style="color:#f0f0f0;">${a.clases_tomadas || 0}</div>
+              <div class="stat-label">Tomadas</div>
+            </div>
+            <div class="stat-card" style="text-align:center;">
+              <div class="stat-number" style="font-size:28px;color:${vencido ? '#cc0000' : '#f0f0f0'};">
+                ${dias !== null ? (vencido ? `Vencido` : `${dias}d`) : '—'}
+              </div>
+              <div class="stat-label">Vencimiento</div>
+              <div style="font-size:11px;color:#888;margin-top:4px;">${fmtDate(a.vencimiento)}</div>
+            </div>
+          </div>
+
+          <!-- Fila 2: progreso -->
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span style="font-family:'Oswald',sans-serif;font-size:14px;letter-spacing:1px;text-transform:uppercase;color:#888;">Progreso del plan</span>
+              <span style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;color:#cc0000;">${pct}%</span>
+            </div>
+            <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+            <div style="font-size:12px;color:#888;margin-top:6px;">${a.clases_tomadas || 0} de ${a.clases_total || 0} clases</div>
+          </div>
+
+          <!-- Fila 3: registrar clase -->
+          <div class="card">
+            <div class="card-title" style="font-size:14px;margin-bottom:12px;">Registrar clase</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn btn-green" onclick="marcarClase('${a.id}', 'tomada', '')">✓ Clase tomada</button>
+              <button class="btn btn-yellow" onclick="marcarClase('${a.id}', 'tomada', 'Cancelación tardía')">⚠ Cancelación tardía</button>
+            </div>
+          </div>
+
+          <!-- Fila 4: gráfico asistencia -->
+          <div class="card">
+            <div class="card-title" style="font-size:14px;margin-bottom:12px;">
+              Asistencia este mes
+              <span style="font-size:12px;color:#888;font-family:'Inter',sans-serif;font-weight:400;margin-left:12px;">
+                <span style="display:inline-block;width:10px;height:10px;background:#25d366;border-radius:2px;margin-right:3px;"></span>Confirmada
+                <span style="display:inline-block;width:10px;height:10px;background:#cc0000;border-radius:2px;margin:0 3px 0 8px;"></span>Tardía
+                <span style="display:inline-block;width:10px;height:10px;background:#2a2a2a;border-radius:2px;margin:0 3px 0 8px;"></span>Sin clase
+              </span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">${gridCeldas}</div>
+          </div>
+
+          <!-- Fila 5: historiales -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="card">
+              <div class="card-title" style="font-size:13px;margin-bottom:10px;">Confirmaciones recientes</div>
+              ${histConf}
+            </div>
+            <div class="card">
+              <div class="card-title" style="font-size:13px;margin-bottom:10px;">Últimos pagos</div>
+              ${histPagos}
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:16px;">
-        <p class="text-gray mb-8" style="font-size:13px;">Progreso de clases</p>
-        <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
-        <p style="font-size:12px;color:var(--gray);margin-top:4px;">${a.clases_tomadas || 0} / ${a.clases_total || 0} clases · ${planLabel(a.plan)}</p>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-        <div class="card">
-          <div class="card-title" style="font-size:14px;">Info personal</div>
-          <p><span class="text-gray">Documento:</span> ${a.documento}</p>
-          <p><span class="text-gray">Celular:</span> ${a.celular || '—'}</p>
-          <p><span class="text-gray">Correo:</span> ${a.correo || '—'}</p>
-          <p><span class="text-gray">Nacimiento:</span> ${fmtDate(a.nacimiento)}</p>
-          <p><span class="text-gray">Horario:</span> ${a.horario_dia || '—'} ${a.horario_hora || ''}</p>
-        </div>
-        <div class="card">
-          <div class="card-title" style="font-size:14px;">Notas del entrenador</div>
-          <textarea id="notas-edit-${a.id}" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--white);padding:10px;border-radius:4px;font-family:var(--font-b);font-size:14px;resize:vertical;min-height:100px;">${a.notas || ''}</textarea>
-          <button class="btn btn-secondary btn-sm mt-8" onclick="saveNotas('${a.id}')">Guardar notas</button>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">Registrar clase</div>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;">
-          <button class="btn btn-green" onclick="marcarClase('${a.id}', 'tomada', '')">✓ Clase tomada</button>
-          <button class="btn btn-secondary" onclick="marcarClase('${a.id}', 'tomada', 'Cobrada por cancelación tardía')">⚠️ Cancelación tardía (cobrar clase)</button>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div class="card">
-          <div class="card-title" style="font-size:14px;">Historial de confirmaciones</div>
-          ${histConf}
-        </div>
-        <div class="card">
-          <div class="card-title" style="font-size:14px;">Historial de pagos</div>
-          ${histPagos}
-        </div>
+      <!-- Notas del entrenador -->
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title" style="margin-bottom:12px;">Notas del entrenador</div>
+        <textarea id="notas-edit-${a.id}" style="width:100%;background:#1a1a1a;border:1px solid #333;color:#f0f0f0;padding:12px;border-radius:4px;font-family:'Inter',sans-serif;font-size:14px;resize:vertical;min-height:100px;">${a.notas || ''}</textarea>
+        <button class="btn btn-secondary btn-sm mt-8" onclick="saveNotas('${a.id}')">Guardar notas</button>
       </div>`;
   }
 
