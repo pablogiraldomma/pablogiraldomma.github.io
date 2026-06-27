@@ -1425,6 +1425,76 @@
           <button class="btn btn-yellow" onclick="confirmarClase('aplazada')">⚠️ Aplazar clase</button>
         </div>
         <div id="alert-confirmacion" style="margin-top:12px;"></div>
+      </div>
+
+      ${buildMiPlan(a)}`;
+  }
+
+  function buildMiPlan(a) {
+    if (!a.notas || !a.notas.trim()) return '';
+
+    const lines = a.notas.trim().split('\n').map(l => l.trim()).filter(l => l);
+    const tomadas = a.clases_tomadas || 0;
+
+    let itemsHtml = '';
+    let claseCounter = 0;
+    let firstLine = true;
+
+    for (const line of lines) {
+      // Primera línea: info de inicio en rojo
+      if (firstLine) {
+        itemsHtml += `<p style="color:#cc0000;font-size:13px;margin-bottom:14px;font-weight:600;">${line}</p>`;
+        firstLine = false;
+        continue;
+      }
+
+      // Líneas que empiezan con "Clase X"
+      const match = line.match(/^Clase\s+(\d+)\s*[—–-]?\s*(.*)/i);
+      if (match) {
+        claseCounter++;
+        const num = parseInt(match[1]);
+        const desc = match[2] || '';
+        const done = tomadas >= num;
+        const next = tomadas === num - 1;
+
+        const numColor  = done ? '#555' : '#cc0000';
+        const textColor = done ? '#555' : next ? '#fff' : '#888';
+        const textDeco  = done ? 'line-through' : 'none';
+        const icon      = done ? '✅ ' : next ? '▶ ' : '';
+
+        itemsHtml += `
+          <div style="display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px solid #1a1a1a;">
+            <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${numColor};flex-shrink:0;width:28px;">${num}</span>
+            <span style="font-size:13px;color:${textColor};text-decoration:${textDeco};">${icon}${desc}</span>
+          </div>`;
+        continue;
+      }
+
+      // Líneas vacías de sección (ej: "PLAN 15 CLASES JIU JITSU:")
+      if (line.endsWith(':') || line.toUpperCase() === line) {
+        itemsHtml += `<p style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:3px;color:#cc0000;text-transform:uppercase;margin:16px 0 8px;">${line}</p>`;
+        continue;
+      }
+
+      // Otras líneas
+      itemsHtml += `<p style="color:#888;font-size:13px;margin:4px 0;">${line}</p>`;
+    }
+
+    return `
+      <div style="margin-top:16px;border-radius:6px;overflow:hidden;border:1px solid #222;border-top:3px solid #cc0000;">
+        <button onclick="
+          const body = document.getElementById('plan-body');
+          const arrow = document.getElementById('plan-arrow');
+          const open = body.style.display !== 'none';
+          body.style.display = open ? 'none' : 'block';
+          arrow.textContent = open ? '▼' : '▲';
+        " style="width:100%;background:#111;border:none;color:#fff;font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:2px;text-transform:uppercase;padding:16px 20px;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+          MI PLAN DE ENTRENAMIENTO
+          <span id="plan-arrow" style="color:#cc0000;font-size:12px;">▼</span>
+        </button>
+        <div id="plan-body" style="display:none;background:#111;padding:16px 20px;">
+          ${itemsHtml}
+        </div>
       </div>`;
   }
 
