@@ -1161,12 +1161,27 @@
             <span style="background:#cc0000;color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;padding:4px 14px;border-radius:20px;font-family:'Oswald',sans-serif;">${planBadgeLabel[a.plan] || a.plan}</span>
           </div>
 
-          <div class="card" style="font-size:14px;line-height:2;">
-            <p>📄 ${a.documento || '—'}</p>
-            <p>📱 ${a.celular || '—'}</p>
-            <p>📧 ${a.correo || '—'}</p>
-            <p>🎂 ${fmtDate(a.nacimiento)}</p>
-            <p>📅 ${a.horario_dia || '—'} ${a.horario_hora || ''}</p>
+          <div class="card" style="font-size:14px;">
+            <div style="margin-bottom:12px;">
+              <div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;">Documento</div>
+              <div>${a.documento || '—'}</div>
+            </div>
+            <div style="margin-bottom:12px;">
+              <div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;">Celular</div>
+              <div>${a.celular || '—'}</div>
+            </div>
+            <div style="margin-bottom:12px;">
+              <div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;">Correo</div>
+              <div style="word-break:break-all;">${a.correo || '—'}</div>
+            </div>
+            <div style="margin-bottom:12px;">
+              <div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;">Nacimiento</div>
+              <div>${fmtDate(a.nacimiento)}</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;">Horario</div>
+              <div>${a.horario_dia || '—'} ${a.horario_hora || ''}</div>
+            </div>
           </div>
 
           <div style="display:flex;flex-direction:column;gap:8px;">
