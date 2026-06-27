@@ -529,6 +529,7 @@ async function renderDetalleAlumno(){
   const tabs=[
     {id:'perfil',label:'Perfil'},
     {id:'progreso',label:'Progreso'},
+    {id:'individual',label:'Individual'},
     {id:'clases',label:'Clases'},
     {id:'pagos',label:'Pagos'},
     {id:'notas',label:'Notas'},
@@ -541,6 +542,7 @@ async function renderDetalleAlumno(){
 
   if(detailTab==='perfil') body=await buildDetallePeril(a);
   else if(detailTab==='progreso') body=await buildDetalleProgreso(a);
+  else if(detailTab==='individual') body=await buildDetalleIndividual(a);
   else if(detailTab==='clases') body=await buildDetalleClases(a);
   else if(detailTab==='pagos') body=await buildDetallePagos(a);
   else if(detailTab==='notas') body=buildDetalleNotas(a);
@@ -577,6 +579,107 @@ async function buildDetallePeril(a){
       ${infoF('Horario',`${a.horario_dia||'—'} ${a.horario_hora||''}`)}
       ${infoF('Vencimiento',fmtDate(a.vencimiento))}
     </div>`;
+}
+
+// ── CLASES INDIVIDUALES (ADMIN) ───────────────
+let _indFormOpen = false;
+
+async function buildDetalleIndividual(a){
+  const{data:list}=await sb.from('clases_individuales').select('*')
+    .eq('alumno_id',a.id).order('fecha',{ascending:false});
+
+  const formHtml=`
+    <div id="ind-form" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px;">
+      <div class="card-title mb-12">Nueva clase individual</div>
+      <div class="form-row">
+        <div class="form-group"><label>Fecha</label><input type="date" id="ind-fecha" value="${today()}"></div>
+        <div class="form-group"><label>Hora</label><input type="time" id="ind-hora" value="06:00"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Disciplina</label><input type="text" id="ind-disc" placeholder="Jiu Jitsu, MMA, Boxeo..."></div>
+        <div class="form-group"><label>Monto (COP)</label><input type="number" id="ind-monto" placeholder="80000"></div>
+      </div>
+      <div class="form-group"><label>Notas (opcional)</label><input type="text" id="ind-notas" placeholder="Observaciones..."></div>
+      <div class="flex gap-8 mt-12">
+        <button class="btn btn-primary btn-sm" onclick="saveClaseIndividual('${a.id}')">Guardar clase</button>
+        <button class="btn btn-secondary btn-sm" onclick="$('ind-form').style.display='none'">Cancelar</button>
+      </div>
+    </div>`;
+
+  const totalMonto=(list||[]).reduce((s,c)=>s+Number(c.monto||0),0);
+  const pendiente=(list||[]).filter(c=>c.estado_pago==='pendiente');
+
+  const cards=(list||[]).map(c=>{
+    const isPend=c.estado_pago==='pendiente';
+    const badgeHtml=isPend
+      ?`<span class="badge badge-yellow">🟡 Pendiente</span>`
+      :`<span class="badge badge-green">✅ Pagado${c.metodo_pago?' · '+c.metodo_pago:''}</span>`;
+
+    const payBtn=isPend?`
+      <div id="pay-${c.id}" style="margin-top:8px;display:none;">
+        <div style="font-size:12px;color:var(--gray);margin-bottom:6px;">Método de pago:</div>
+        <div class="flex gap-8 flex-wrap">
+          ${['Efectivo','Nequi','Transferencia','PayPal'].map(m=>
+            `<button class="btn btn-secondary btn-sm" onclick="pagarClaseInd('${c.id}','${m}','${a.id}')">${m}</button>`
+          ).join('')}
+        </div>
+      </div>
+      <button class="btn btn-yellow btn-sm mt-8" onclick="document.getElementById('pay-${c.id}').style.display=document.getElementById('pay-${c.id}').style.display==='none'?'block':'none'">Marcar como pagado</button>`:'';
+
+    return `
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+          <div>
+            <div style="font-family:var(--ft);font-size:16px;font-weight:700;color:#fff;">${c.disciplina||'—'}</div>
+            <div style="font-size:12px;color:var(--gray);margin-top:2px;">${fmtDate(c.fecha)} ${c.hora?'· '+c.hora:''}</div>
+            <div style="font-size:13px;color:var(--white);margin-top:4px;">$${Number(c.monto||0).toLocaleString('es-CO')}</div>
+            ${c.notas?`<div style="font-size:12px;color:var(--gray);margin-top:2px;">${c.notas}</div>`:''}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            ${badgeHtml}
+            <button class="btn btn-secondary btn-sm" style="color:var(--red);font-size:18px;padding:4px 8px;" onclick="eliminarClaseInd('${c.id}','${a.id}')">🗑</button>
+          </div>
+        </div>
+        ${payBtn}
+      </div>`;
+  }).join('')||'<p class="text-gray" style="padding:12px 0;">Sin clases individuales registradas.</p>';
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div>
+        <div style="font-family:var(--ft);font-size:13px;color:var(--gray);">Total cobrado: <strong style="color:#fff;">$${totalMonto.toLocaleString('es-CO')}</strong></div>
+        ${pendiente.length?`<div style="font-size:12px;color:var(--yellow);">⚠ ${pendiente.length} clase(s) con pago pendiente</div>`:''}
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="$('ind-form').style.display=$('ind-form').style.display==='none'?'block':'none'">+ Registrar clase individual</button>
+    </div>
+    ${formHtml}
+    ${cards}`;
+}
+
+async function saveClaseIndividual(alumnoId){
+  const fecha=$('ind-fecha').value, hora=$('ind-hora').value;
+  const disc=($('ind-disc').value||'').trim(), monto=$('ind-monto').value;
+  if(!fecha||!disc){alert('Fecha y disciplina son obligatorios.');return;}
+  const{error}=await sb.from('clases_individuales').insert({
+    alumno_id:alumnoId, fecha, hora:hora||null,
+    disciplina:disc, monto:Number(monto)||0,
+    notas:($('ind-notas').value||'').trim()||null,
+    estado_pago:'pendiente',
+  });
+  if(error){alert(error.message);return;}
+  $('ind-form').style.display='none';
+  openDetalleAlumno(alumnoId,'individual');
+}
+
+async function pagarClaseInd(claseId, metodo, alumnoId){
+  await sb.from('clases_individuales').update({estado_pago:'pagado',metodo_pago:metodo}).eq('id',claseId);
+  openDetalleAlumno(alumnoId,'individual');
+}
+
+async function eliminarClaseInd(claseId, alumnoId){
+  if(!confirm('¿Eliminar esta clase individual?')) return;
+  await sb.from('clases_individuales').delete().eq('id',claseId);
+  openDetalleAlumno(alumnoId,'individual');
 }
 
 async function buildDetalleProgreso(a){
@@ -827,6 +930,10 @@ async function renderAlumnoDashboard(){
   const{data:yaConf}=await sb.from('confirmaciones').select('estado').eq('alumno_id',a.id).eq('fecha',fechaMan).maybeSingle();
   const{data:hoyOk}=await sb.from('confirmaciones').select('id').eq('alumno_id',a.id).eq('fecha',today()).eq('estado','asistio').maybeSingle();
 
+  // Check individual classes today or tomorrow
+  const{data:indProx}=await sb.from('clases_individuales').select('*')
+    .eq('alumno_id',a.id).in('fecha',[today(),fechaMan]).order('fecha').limit(1).maybeSingle();
+
   let confHtml;
   if(hoyOk) confHtml=`<div class="alert alert-success" style="font-size:16px;">🏆 ¡Clase de hoy completada! Sigue así.</div>`;
   else if(yaConf) confHtml=`<div class="alert alert-success">${yaConf.estado==='confirmada'?'✅ Asistencia confirmada':'⚠️ Clase aplazada'} para mañana <strong>(${fmtDate(fechaMan)})</strong></div>`;
@@ -838,8 +945,14 @@ async function renderAlumnoDashboard(){
     </div>
     <div id="alert-conf" style="margin-top:10px;"></div>`;
 
+  const indAvisoHtml=indProx?`
+    <div style="background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);border-radius:6px;padding:12px 16px;margin-bottom:14px;font-size:14px;color:#d8b4fe;">
+      📅 Tienes clase de <strong>${indProx.disciplina||'entreno individual'}</strong> ${indProx.fecha===today()?'hoy':'mañana'}${indProx.hora?' a las <strong>'+indProx.hora+'</strong>':''}.
+    </div>`:'';
+
   render('tab-content',`
     <div style="font-family:var(--ft);font-size:26px;font-weight:700;margin-bottom:16px;">Hola, ${a.nombre.split(' ')[0]} 👊</div>
+    ${indAvisoHtml}
 
     <div class="stats-row">
       <div class="stat-card"><div class="stat-num">${rest}</div><div class="stat-label">Restantes</div></div>
@@ -883,13 +996,35 @@ async function renderAlumnoPlan(){
 async function renderAlumnoClases(){
   render('tab-content','<p class="text-gray" style="padding:20px;">Cargando...</p>');
   const a=await getAlumnoFresh();
-  const{data:list}=await sb.from('confirmaciones').select('*').eq('alumno_id',a.id).order('fecha',{ascending:false});
-  let filtro='todas';
 
-  const renderList=(items)=>{
+  const[{data:confs},{data:inds}]=await Promise.all([
+    sb.from('confirmaciones').select('*').eq('alumno_id',a.id).order('fecha',{ascending:false}),
+    sb.from('clases_individuales').select('*').eq('alumno_id',a.id).order('fecha',{ascending:false}),
+  ]);
+
+  // Unify: confirmaciones + individuales
+  const unified=[
+    ...(confs||[]).map(c=>({_tipo:'plan',fecha:c.fecha,hora:null,disciplina:null,estado:c.estado,_raw:c})),
+    ...(inds||[]).map(c=>({_tipo:'individual',fecha:c.fecha,hora:c.hora,disciplina:c.disciplina,estado:c.estado_pago==='pagado'?'completada':'programada',_raw:c})),
+  ].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+
+  const renderListFn=(items)=>{
     const rows=items.map(c=>{
-      const icon=c.estado==='asistio'?'✅':c.estado==='confirmada'?'🔵':c.estado==='aplazada'?'⚠️':c.estado==='individual'?'🟣':'❌';
-      const color=c.estado==='asistio'?'var(--green)':c.estado==='individual'?'#a855f7':c.estado==='aplazada'?'var(--yellow)':c.estado==='cancelada_tardia'?'var(--red)':'var(--gray)';
+      if(c._tipo==='individual'){
+        const icon=c.estado==='completada'?'🟣':'📅';
+        const color=c.estado==='completada'?'#a855f7':'var(--yellow)';
+        const estadoLabel=c.estado==='completada'?'Completada':'Programada';
+        return `<div class="hist-item">
+          <span class="hist-icon">${icon}</span>
+          <span style="flex:1;font-size:13px;">
+            <span style="color:${color};">${estadoLabel}</span>
+            <span class="text-gray"> · ${c.disciplina||'Individual'}${c.hora?' · '+c.hora:''}</span>
+          </span>
+          <span style="font-size:12px;color:var(--gray);">${fmtDate(c.fecha)}</span>
+        </div>`;
+      }
+      const icon=c.estado==='asistio'?'✅':c.estado==='confirmada'?'🔵':c.estado==='aplazada'?'⚠️':'❌';
+      const color=c.estado==='asistio'?'var(--green)':c.estado==='aplazada'?'var(--yellow)':c.estado==='cancelada_tardia'?'var(--red)':'var(--gray)';
       return `<div class="hist-item">
         <span class="hist-icon">${icon}</span>
         <span style="flex:1;font-size:13px;color:${color};text-transform:capitalize;">${c.estado.replace(/_/g,' ')}</span>
@@ -902,38 +1037,20 @@ async function renderAlumnoClases(){
   render('tab-content',`
     <div class="sec-title">Mis Clases</div>
     <div class="filter-tabs">
-      <button class="filter-tab active" id="ft-todas" onclick="setFiltro('todas',${'`'}${(list||[]).map(c=>'<div>'+c.estado+'</div>').join('')}${'`'})">Todas</button>
-      <button class="filter-tab" id="ft-tomadas" onclick="setFiltroEstado('asistio')">Tomadas ✅</button>
-      <button class="filter-tab" id="ft-conf" onclick="setFiltroEstado('confirmada')">Confirmadas 🔵</button>
-      <button class="filter-tab" id="ft-aplaz" onclick="setFiltroEstado('aplazada')">Aplazadas ⚠️</button>
+      <button class="filter-tab active" id="ft-todas" onclick="_clasesFilter('todas')">Todas</button>
+      <button class="filter-tab" id="ft-plan" onclick="_clasesFilter('plan')">Plan ✅</button>
+      <button class="filter-tab" id="ft-ind" onclick="_clasesFilter('individual')">Individuales 🟣</button>
     </div>
     <div class="card" id="clases-list"></div>`);
 
-  window._clasesList=list||[];
-  const renderListFn=(items)=>{
-    const rows=items.map(c=>{
-      const icon=c.estado==='asistio'?'✅':c.estado==='confirmada'?'🔵':c.estado==='aplazada'?'⚠️':c.estado==='individual'?'🟣':'❌';
-      const color=c.estado==='asistio'?'var(--green)':c.estado==='individual'?'#a855f7':c.estado==='aplazada'?'var(--yellow)':c.estado==='cancelada_tardia'?'var(--red)':'var(--gray)';
-      return `<div class="hist-item">
-        <span class="hist-icon">${icon}</span>
-        <span style="flex:1;font-size:13px;color:${color};text-transform:capitalize;">${c.estado.replace(/_/g,' ')}</span>
-        <span style="font-size:12px;color:var(--gray);">${fmtDate(c.fecha)}</span>
-      </div>`;
-    }).join('')||'<p class="text-gray" style="padding:12px 0;">Sin registros.</p>';
-    $('clases-list').innerHTML=rows;
-  };
-  renderListFn(window._clasesList);
-
-  window.setFiltroEstado=function(est){
+  window._clasesAll=unified;
+  window._clasesFilter=function(tipo){
     document.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));
-    document.querySelector(`[onclick*="${est}"]`)?.classList.add('active');
-    renderListFn(window._clasesList.filter(c=>c.estado===est));
+    $('ft-'+tipo)?.classList.add('active');
+    const filtered=tipo==='todas'?unified:unified.filter(c=>c._tipo===tipo);
+    renderListFn(filtered);
   };
-  window.setFiltro=function(){
-    $('ft-todas').classList.add('active');
-    ['ft-tomadas','ft-conf','ft-aplaz'].forEach(id=>$(id)?.classList.remove('active'));
-    renderListFn(window._clasesList);
-  };
+  renderListFn(unified);
 }
 
 // ── PAGOS ALUMNO ──────────────────────────────
