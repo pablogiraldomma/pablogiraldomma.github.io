@@ -1160,9 +1160,16 @@
         <!-- COLUMNA IZQUIERDA 30% -->
         <div style="flex:0 0 280px;min-width:240px;display:flex;flex-direction:column;gap:16px;">
           <div class="card" style="text-align:center;">
-            <div style="width:120px;height:120px;border-radius:50%;border:3px solid #cc0000;background:#1a1a1a;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-family:'Oswald',sans-serif;font-size:40px;font-weight:700;color:#cc0000;">
-              ${iniciales(a.nombre)}
+            <div style="position:relative;width:120px;margin:0 auto 12px;" id="avatar-admin-${a.id}">
+              ${a.foto_url
+                ? `<img src="${a.foto_url}" style="width:120px;height:120px;border-radius:50%;border:3px solid #cc0000;object-fit:cover;display:block;">`
+                : `<div style="width:120px;height:120px;border-radius:50%;border:3px solid #cc0000;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:40px;font-weight:700;color:#cc0000;">${iniciales(a.nombre)}</div>`}
+              <label for="foto-admin-${a.id}" title="Cambiar foto"
+                style="position:absolute;bottom:4px;right:4px;width:30px;height:30px;border-radius:50%;background:#cc0000;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;border:2px solid #0a0a0a;">📷</label>
+              <input type="file" id="foto-admin-${a.id}" accept="image/*" capture="environment"
+                style="display:none;" onchange="subirFotoAdmin(this,'${a.id}')">
             </div>
+            <div id="avatar-admin-msg-${a.id}" style="font-size:12px;min-height:16px;margin-bottom:8px;"></div>
             <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#fff;margin-bottom:8px;">${a.nombre}</div>
             <span style="background:#cc0000;color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;padding:4px 14px;border-radius:20px;font-family:'Oswald',sans-serif;">${planBadgeLabel[a.plan] || a.plan}</span>
           </div>
@@ -1405,14 +1412,12 @@
     const { data: histPagos } = await sb.from('pagos').select('*')
       .eq('alumno_id', a.id).order('fecha', { ascending: false }).limit(3);
 
-    // Foto
-    const fotoSrc = a.foto_url
-      ? a.foto_url
-      : null;
-
-    const avatarHtml = fotoSrc
-      ? `<img src="${fotoSrc}" style="width:120px;height:120px;border-radius:50%;border:3px solid #cc0000;object-fit:cover;display:block;margin:0 auto;">`
-      : `<div style="width:120px;height:120px;border-radius:50%;border:3px solid #cc0000;background:#1a1a1a;display:flex;align-items:center;justify-content:center;margin:0 auto;font-family:'Oswald',sans-serif;font-size:40px;font-weight:700;color:#cc0000;">${iniciales(a.nombre)}</div>`;
+    const avatarHtml = `
+      <div style="position:relative;width:120px;margin:0 auto;" id="avatar-alumno">
+        ${a.foto_url
+          ? `<img src="${a.foto_url}" style="width:120px;height:120px;border-radius:50%;border:3px solid #cc0000;object-fit:cover;display:block;">`
+          : `<div style="width:120px;height:120px;border-radius:50%;border:3px solid #cc0000;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-family:'Oswald',sans-serif;font-size:40px;font-weight:700;color:#cc0000;">${iniciales(a.nombre)}</div>`}
+      </div>`;
 
     const planBadgeLabel = { '10_clases': '10 CLASES', '15_clases': '15 CLASES', 'individual': 'INDIVIDUAL' };
 
@@ -1456,10 +1461,11 @@
         <div style="flex:0 0 280px;min-width:240px;display:flex;flex-direction:column;gap:16px;">
           <div class="card" style="text-align:center;">
             ${avatarHtml}
-            <label for="foto-input" style="display:inline-block;margin-top:10px;font-size:12px;color:#888;cursor:pointer;padding:4px 12px;border:1px solid #333;border-radius:20px;">
+            <label for="foto-alumno-input" style="display:inline-block;margin-top:10px;font-size:12px;color:#888;cursor:pointer;padding:4px 12px;border:1px solid #333;border-radius:20px;">
               📷 Cambiar foto
             </label>
-            <input type="file" id="foto-input" accept="image/*" style="display:none;" onchange="subirFoto(this)">
+            <input type="file" id="foto-alumno-input" accept="image/*" capture="environment" style="display:none;" onchange="subirFoto(this)">
+            <div id="avatar-alumno-msg" style="font-size:12px;min-height:16px;margin-top:4px;"></div>
             <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#fff;margin:12px 0 6px;">${a.nombre}</div>
             <span style="background:#cc0000;color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;padding:4px 14px;border-radius:20px;font-family:'Oswald',sans-serif;">${planBadgeLabel[a.plan] || a.plan}</span>
           </div>
@@ -1533,19 +1539,48 @@
       </div>`;
   }
 
-  async function subirFoto(input) {
-    const file = input.files[0];
+  /* Función unificada de subida de foto — admin y alumno */
+  async function uploadFotoPerfil(alumnoId, file, avatarContainerId, msgId) {
     if (!file) return;
-    const ext  = file.name.split('.').pop();
-    const path = `${session.alumno.id}.${ext}`;
+    // Loading
+    const container = document.getElementById(avatarContainerId);
+    if (container) container.style.opacity = '0.4';
+    const ext  = file.name.split('.').pop().toLowerCase();
+    const path = `${alumnoId}_${Date.now()}.${ext}`;
     const { error: upErr } = await sb.storage.from('fotos-alumnos').upload(path, file, { upsert: true });
-    if (upErr) { alert('Error subiendo foto: ' + upErr.message); return; }
+    if (upErr) {
+      if (container) container.style.opacity = '1';
+      alert('Error subiendo foto: ' + upErr.message);
+      return;
+    }
     const { data: urlData } = sb.storage.from('fotos-alumnos').getPublicUrl(path);
     const foto_url = urlData.publicUrl + '?t=' + Date.now();
-    await sb.from('alumnos').update({ foto_url }).eq('id', session.alumno.id);
-    session.alumno.foto_url = foto_url;
-    localStorage.setItem('pg_session', JSON.stringify(session));
-    renderAlumnoDashboard();
+    await sb.from('alumnos').update({ foto_url }).eq('id', alumnoId);
+    // Update session if own photo
+    if (session.role === 'alumno' && session.alumno.id === alumnoId) {
+      session.alumno.foto_url = foto_url;
+      localStorage.setItem('pg_session', JSON.stringify(session));
+    }
+    // Update avatar in place
+    if (container) {
+      container.style.opacity = '1';
+      container.innerHTML = `<img src="${foto_url}" style="width:120px;height:120px;border-radius:50%;border:3px solid #cc0000;object-fit:cover;display:block;">`;
+    }
+    const msg = document.getElementById(msgId);
+    if (msg) { msg.textContent = 'Foto actualizada ✓'; msg.style.color = '#25d366'; }
+  }
+
+  /* Alumno: sube su propia foto */
+  function subirFoto(input) {
+    const file = input.files[0];
+    uploadFotoPerfil(session.alumno.id, file, 'avatar-alumno', 'avatar-alumno-msg')
+      .then(() => { /* mensaje ya mostrado en contenedor */ });
+  }
+
+  /* Admin: sube foto de cualquier alumno */
+  function subirFotoAdmin(input, alumnoId) {
+    const file = input.files[0];
+    uploadFotoPerfil(alumnoId, file, 'avatar-admin-' + alumnoId, 'avatar-admin-msg-' + alumnoId);
   }
 
   /* buildMiPlan — panel alumno, usa plan_clases */
