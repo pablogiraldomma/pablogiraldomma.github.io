@@ -1373,129 +1373,205 @@
 
   async function renderAlumnoDashboard() {
     const content = document.getElementById('main-content');
-    content.innerHTML = '<p class="text-gray">Cargando...</p>';
+    content.innerHTML = '<p class="text-gray" style="padding:32px;">Cargando...</p>';
 
     const a = await getAlumnoFresh();
     const restantes = (a.clases_total || 0) - (a.clases_tomadas || 0);
-    const pct = a.clases_total ? Math.round((a.clases_tomadas / a.clases_total) * 100) : 0;
-    const dias = daysUntil(a.vencimiento);
-    const vencido = dias !== null && dias < 0;
+    const pct       = a.clases_total ? Math.round((a.clases_tomadas / a.clases_total) * 100) : 0;
+    const dias       = daysUntil(a.vencimiento);
+    const vencido    = dias !== null && dias < 0;
+
+    // Check tomorrow confirmation
+    const manana = new Date(); manana.setDate(manana.getDate() + 1);
+    const fechaManana = manana.toISOString().split('T')[0];
+    const { data: yaConf } = await sb.from('confirmaciones')
+      .select('estado').eq('alumno_id', a.id).eq('fecha', fechaManana).maybeSingle();
+
+    // Confirmaciones recientes (historial)
+    const { data: histConfs } = await sb.from('confirmaciones').select('*')
+      .eq('alumno_id', a.id).order('fecha', { ascending: false }).limit(5);
+
+    // Pagos recientes
+    const { data: histPagos } = await sb.from('pagos').select('*')
+      .eq('alumno_id', a.id).order('fecha', { ascending: false }).limit(3);
+
+    // Foto
+    const fotoSrc = a.foto_url
+      ? a.foto_url
+      : null;
+
+    const avatarHtml = fotoSrc
+      ? `<img src="${fotoSrc}" style="width:120px;height:120px;border-radius:50%;border:3px solid #cc0000;object-fit:cover;display:block;margin:0 auto;">`
+      : `<div style="width:120px;height:120px;border-radius:50%;border:3px solid #cc0000;background:#1a1a1a;display:flex;align-items:center;justify-content:center;margin:0 auto;font-family:'Oswald',sans-serif;font-size:40px;font-weight:700;color:#cc0000;">${iniciales(a.nombre)}</div>`;
+
+    const planBadgeLabel = { '10_clases': '10 CLASES', '15_clases': '15 CLASES', 'individual': 'INDIVIDUAL' };
+
+    const infoField = (label, val) => `
+      <div style="margin-bottom:12px;">
+        <div style="font-size:10px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;">${label}</div>
+        <div style="font-size:13px;word-break:break-all;">${val || '—'}</div>
+      </div>`;
+
+    // Historial confirmaciones
+    const histConfHtml = (histConfs || []).map(c => {
+      const icon  = c.estado === 'confirmada' ? '✅' : c.estado === 'aplazada' ? '⚠️' : '❌';
+      const color = c.estado === 'confirmada' ? '#25d366' : c.estado === 'aplazada' ? '#f59e0b' : '#cc0000';
+      return `<div class="history-item">
+        <span style="color:${color}">${icon} <span style="text-transform:capitalize;font-size:13px;">${c.estado}</span></span>
+        <span style="color:#888;font-size:12px;">${fmtDate(c.fecha)}</span>
+      </div>`;
+    }).join('') || '<p style="color:#888;font-size:13px;">Sin historial.</p>';
+
+    // Historial pagos
+    const histPagosHtml = (histPagos || []).map(p =>
+      `<div class="history-item">
+        <span style="font-size:13px;"><strong>$${Number(p.monto).toLocaleString('es-CO')}</strong> · ${planLabel(p.plan)}</span>
+        <span style="color:#888;font-size:12px;">${fmtDate(p.fecha)}</span>
+      </div>`
+    ).join('') || '<p style="color:#888;font-size:13px;">Sin pagos.</p>';
+
+    // Confirmar clase HTML
+    const confirmHtml = yaConf
+      ? `<div class="alert alert-success">✅ Ya confirmaste para mañana (${fmtDate(fechaManana)}): <strong>${yaConf.estado}</strong></div>`
+      : `<div style="display:flex;gap:10px;flex-wrap:wrap;">
+           <button class="btn btn-green" onclick="confirmarClase('confirmada')">✓ Confirmar asistencia</button>
+           <button class="btn btn-yellow" onclick="confirmarClase('aplazada')">⚠ Aplazar clase</button>
+         </div>
+         <div id="alert-confirmacion" style="margin-top:12px;"></div>`;
 
     content.innerHTML = `
-      <div class="profile-header">
-        <div class="profile-avatar">${iniciales(a.nombre)}</div>
-        <div>
-          <div class="section-label-small">Bienvenido</div>
-          <div style="font-family:var(--font-t);font-size:26px;font-weight:700;">${a.nombre}</div>
-          <div class="text-gray" style="font-size:14px;">${planLabel(a.plan)}</div>
-        </div>
-      </div>
+      <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
 
-      <div class="stats-grid">
-        <div class="stat-card" style="text-align:center;">
-          <div class="countdown-number">${restantes}</div>
-          <div class="stat-label">Clases restantes</div>
-          <div class="progress-wrap mt-8"><div class="progress-bar" style="width:${100 - pct}%"></div></div>
-          <div class="text-gray mt-8" style="font-size:12px;">${a.clases_tomadas || 0} de ${a.clases_total || 0} tomadas</div>
-        </div>
-        <div class="stat-card" style="text-align:center;">
-          <div class="countdown-number" style="color:${vencido ? 'var(--red)' : 'var(--white)'}">
-            ${dias !== null ? (vencido ? `Vencido` : `${dias}`) : '—'}
+        <!-- COLUMNA IZQUIERDA -->
+        <div style="flex:0 0 280px;min-width:240px;display:flex;flex-direction:column;gap:16px;">
+          <div class="card" style="text-align:center;">
+            ${avatarHtml}
+            <label for="foto-input" style="display:inline-block;margin-top:10px;font-size:12px;color:#888;cursor:pointer;padding:4px 12px;border:1px solid #333;border-radius:20px;">
+              📷 Cambiar foto
+            </label>
+            <input type="file" id="foto-input" accept="image/*" style="display:none;" onchange="subirFoto(this)">
+            <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#fff;margin:12px 0 6px;">${a.nombre}</div>
+            <span style="background:#cc0000;color:#fff;font-size:11px;font-weight:700;letter-spacing:2px;padding:4px 14px;border-radius:20px;font-family:'Oswald',sans-serif;">${planBadgeLabel[a.plan] || a.plan}</span>
           </div>
-          <div class="stat-label">${vencido ? 'Plan vencido' : 'Días para vencer'}</div>
-          <div class="text-gray mt-8" style="font-size:12px;">Vence: ${fmtDate(a.vencimiento)}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number" style="font-size:24px;color:var(--white);">${a.horario_dia || '—'}<br>${a.horario_hora || ''}</div>
-          <div class="stat-label">Mi horario</div>
-        </div>
-      </div>
 
-      <div class="warning-box">
-        ⚠️ <strong>Importante:</strong> Las cancelaciones con menos de 30 minutos de anticipación cuentan como clase tomada.
-      </div>
-
-      <div class="card">
-        <div class="card-title">Confirmar clase de mañana</div>
-        <p class="text-gray mb-16" style="font-size:14px;">
-          ${a.horario_dia ? `Tu clase es los ${a.horario_dia} ${a.horario_hora ? 'a las ' + a.horario_hora : ''}.` : 'Consulta con Pablo tu horario asignado.'}
-        </p>
-        <div style="display:flex;gap:12px;flex-wrap:wrap;">
-          <button class="btn btn-green" onclick="confirmarClase('confirmada')">✅ Confirmar asistencia</button>
-          <button class="btn btn-yellow" onclick="confirmarClase('aplazada')">⚠️ Aplazar clase</button>
+          <div class="card" style="font-size:13px;">
+            ${infoField('Documento', a.documento)}
+            ${infoField('Celular', a.celular)}
+            ${infoField('Correo', a.correo)}
+            ${infoField('Nacimiento', fmtDate(a.nacimiento))}
+            ${infoField('Horario', (a.horario_dia || '') + (a.horario_hora ? ' · ' + a.horario_hora : ''))}
+          </div>
         </div>
-        <div id="alert-confirmacion" style="margin-top:12px;"></div>
-      </div>
 
-      ${buildMiPlan(a)}`;
+        <!-- COLUMNA DERECHA -->
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px;">
+
+          <!-- Métricas -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+            <div class="stat-card" style="text-align:center;">
+              <div class="stat-number" style="color:#cc0000;">${restantes}</div>
+              <div class="stat-label">Restantes</div>
+            </div>
+            <div class="stat-card" style="text-align:center;">
+              <div class="stat-number" style="font-size:28px;color:${vencido?'#cc0000':'#f0f0f0'};">${dias !== null ? (vencido ? 'Vencido' : dias) : '—'}</div>
+              <div class="stat-label">${vencido ? 'Plan vencido' : 'Días al vence'}</div>
+              <div style="font-size:11px;color:#888;margin-top:4px;">${fmtDate(a.vencimiento)}</div>
+            </div>
+            <div class="stat-card" style="text-align:center;">
+              <div style="font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:#f0f0f0;">${a.horario_dia || '—'}</div>
+              <div style="font-size:13px;color:#888;">${a.horario_hora || ''}</div>
+              <div class="stat-label" style="margin-top:4px;">Mi horario</div>
+            </div>
+          </div>
+
+          <!-- Progreso -->
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span style="font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#888;">Progreso del plan</span>
+              <span style="font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;color:#cc0000;">${pct}%</span>
+            </div>
+            <div class="progress-wrap"><div class="progress-bar" style="width:${pct}%"></div></div>
+            <div style="font-size:12px;color:#888;margin-top:6px;">${a.clases_tomadas || 0} de ${a.clases_total || 0} clases tomadas</div>
+          </div>
+
+          <!-- Advertencia -->
+          <div class="warning-box">⚠️ <strong>Importante:</strong> Las cancelaciones con menos de 30 minutos de anticipación cuentan como clase tomada.</div>
+
+          <!-- Confirmar clase -->
+          <div class="card">
+            <div class="card-title" style="font-size:14px;margin-bottom:6px;">Confirmar clase de mañana</div>
+            <div style="font-size:13px;color:#888;margin-bottom:14px;">${fmtDate(fechaManana)}${a.horario_dia ? ' · ' + a.horario_dia + (a.horario_hora ? ' ' + a.horario_hora : '') : ''}</div>
+            ${confirmHtml}
+          </div>
+
+          <!-- Mi plan desplegable -->
+          ${buildMiPlan(a)}
+
+          <!-- Historial clases -->
+          <div class="card">
+            <div class="card-title" style="font-size:13px;margin-bottom:10px;">Últimas clases</div>
+            ${histConfHtml}
+          </div>
+
+          <!-- Historial pagos -->
+          <div class="card">
+            <div class="card-title" style="font-size:13px;margin-bottom:10px;">Últimos pagos</div>
+            ${histPagosHtml}
+          </div>
+
+        </div>
+      </div>`;
+  }
+
+  async function subirFoto(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const ext  = file.name.split('.').pop();
+    const path = `${session.alumno.id}.${ext}`;
+    const { error: upErr } = await sb.storage.from('fotos-alumnos').upload(path, file, { upsert: true });
+    if (upErr) { alert('Error subiendo foto: ' + upErr.message); return; }
+    const { data: urlData } = sb.storage.from('fotos-alumnos').getPublicUrl(path);
+    const foto_url = urlData.publicUrl + '?t=' + Date.now();
+    await sb.from('alumnos').update({ foto_url }).eq('id', session.alumno.id);
+    session.alumno.foto_url = foto_url;
+    localStorage.setItem('pg_session', JSON.stringify(session));
+    renderAlumnoDashboard();
   }
 
   function buildMiPlan(a) {
     if (!a.notas || !a.notas.trim()) return '';
-
-    const lines = a.notas.trim().split('\n').map(l => l.trim()).filter(l => l);
+    const lines  = a.notas.trim().split('\n').map(l => l.trim()).filter(l => l);
     const tomadas = a.clases_tomadas || 0;
-
-    let itemsHtml = '';
-    let claseCounter = 0;
-    let firstLine = true;
+    let html = ''; let firstLine = true;
 
     for (const line of lines) {
-      // Primera línea: info de inicio en rojo
       if (firstLine) {
-        itemsHtml += `<p style="color:#cc0000;font-size:13px;margin-bottom:14px;font-weight:600;">${line}</p>`;
-        firstLine = false;
-        continue;
+        html += `<p style="color:#cc0000;font-size:13px;margin-bottom:14px;font-weight:600;">${line}</p>`;
+        firstLine = false; continue;
       }
-
-      // Líneas que empiezan con "Clase X"
-      const match = line.match(/^Clase\s+(\d+)\s*[—–-]?\s*(.*)/i);
-      if (match) {
-        claseCounter++;
-        const num = parseInt(match[1]);
-        const desc = match[2] || '';
-        const done = tomadas >= num;
-        const next = tomadas === num - 1;
-
-        const numColor  = done ? '#555' : '#cc0000';
-        const textColor = done ? '#555' : next ? '#fff' : '#888';
-        const textDeco  = done ? 'line-through' : 'none';
-        const icon      = done ? '✅ ' : next ? '▶ ' : '';
-
-        itemsHtml += `
-          <div style="display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px solid #1a1a1a;">
-            <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${numColor};flex-shrink:0;width:28px;">${num}</span>
-            <span style="font-size:13px;color:${textColor};text-decoration:${textDeco};">${icon}${desc}</span>
-          </div>`;
-        continue;
+      const m = line.match(/^Clase\s+(\d+)\s*[—–-]?\s*(.*)/i);
+      if (m) {
+        const num = parseInt(m[1]), desc = m[2] || '';
+        const done = tomadas >= num, next = tomadas === num - 1;
+        html += `<div style="display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px solid #1a1a1a;">
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${done?'#555':'#cc0000'};flex-shrink:0;width:28px;">${num}</span>
+          <span style="font-size:13px;color:${done?'#555':next?'#fff':'#666'};font-weight:${next?700:400};text-decoration:${done?'line-through':'none'};">${done?'✅ ':next?'▶ ':''}${desc}</span>
+        </div>`; continue;
       }
-
-      // Líneas vacías de sección (ej: "PLAN 15 CLASES JIU JITSU:")
-      if (line.endsWith(':') || line.toUpperCase() === line) {
-        itemsHtml += `<p style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:3px;color:#cc0000;text-transform:uppercase;margin:16px 0 8px;">${line}</p>`;
-        continue;
+      if (line.endsWith(':') || line === line.toUpperCase()) {
+        html += `<p style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:3px;color:#cc0000;text-transform:uppercase;margin:16px 0 8px;">${line}</p>`; continue;
       }
-
-      // Otras líneas
-      itemsHtml += `<p style="color:#888;font-size:13px;margin:4px 0;">${line}</p>`;
+      html += `<p style="color:#888;font-size:13px;margin:4px 0;">${line}</p>`;
     }
 
-    return `
-      <div style="margin-top:16px;border-radius:6px;overflow:hidden;border:1px solid #222;border-top:3px solid #cc0000;">
-        <button onclick="
-          const body = document.getElementById('plan-body');
-          const arrow = document.getElementById('plan-arrow');
-          const open = body.style.display !== 'none';
-          body.style.display = open ? 'none' : 'block';
-          arrow.textContent = open ? '▼' : '▲';
-        " style="width:100%;background:#111;border:none;color:#fff;font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:2px;text-transform:uppercase;padding:16px 20px;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-          MI PLAN DE ENTRENAMIENTO
-          <span id="plan-arrow" style="color:#cc0000;font-size:12px;">▼</span>
-        </button>
-        <div id="plan-body" style="display:none;background:#111;padding:16px 20px;">
-          ${itemsHtml}
-        </div>
-      </div>`;
+    return `<div style="border-radius:6px;overflow:hidden;border:1px solid #222;border-top:3px solid #cc0000;">
+      <button onclick="const b=document.getElementById('plan-body'),a=document.getElementById('plan-arrow'),o=b.style.display!=='none';b.style.display=o?'none':'block';a.textContent=o?'▼':'▲';"
+        style="width:100%;background:#111;border:none;color:#fff;font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:2px;text-transform:uppercase;padding:16px 20px;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+        MI PLAN DE ENTRENAMIENTO
+        <span id="plan-arrow" style="color:#cc0000;font-size:12px;">▼</span>
+      </button>
+      <div id="plan-body" style="display:none;background:#111;padding:16px 20px;">${html}</div>
+    </div>`;
   }
 
   async function confirmarClase(estado) {
