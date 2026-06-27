@@ -358,6 +358,8 @@ let adminTab = 'alumnos';
 let alumnoTab = 'panel';
 let detailAlumnoId = null;
 let detailTab = 'perfil';
+let clasesInnerTab = 'todas';
+let alumnoClasesInnerTab = 'todas';
 
 // ═══════════════════════════════════════════════
 // HELPERS
@@ -529,7 +531,6 @@ async function renderDetalleAlumno(){
   const tabs=[
     {id:'perfil',label:'Perfil'},
     {id:'progreso',label:'Progreso'},
-    {id:'individual',label:'Individual'},
     {id:'clases',label:'Clases'},
     {id:'pagos',label:'Pagos'},
     {id:'notas',label:'Notas'},
@@ -542,7 +543,6 @@ async function renderDetalleAlumno(){
 
   if(detailTab==='perfil') body=await buildDetallePeril(a);
   else if(detailTab==='progreso') body=await buildDetalleProgreso(a);
-  else if(detailTab==='individual') body=await buildDetalleIndividual(a);
   else if(detailTab==='clases') body=await buildDetalleClases(a);
   else if(detailTab==='pagos') body=await buildDetallePagos(a);
   else if(detailTab==='notas') body=buildDetalleNotas(a);
@@ -714,20 +714,139 @@ async function buildDetalleProgreso(a){
 }
 
 async function buildDetalleClases(a){
-  const{data:list}=await sb.from('confirmaciones').select('*')
-    .eq('alumno_id',a.id).order('fecha',{ascending:false}).limit(50);
-  const rows=(list||[]).map(c=>{
-    const icon=c.estado==='asistio'?'✅':c.estado==='confirmada'?'🔵':c.estado==='aplazada'?'⚠️':c.estado==='individual'?'🟣':'❌';
-    const color=c.estado==='asistio'?'var(--green)':c.estado==='individual'?'#a855f7':c.estado==='aplazada'?'var(--yellow)':c.estado==='cancelada_tardia'?'var(--red)':'var(--gray)';
+  const[{data:confs},{data:inds}]=await Promise.all([
+    sb.from('confirmaciones').select('*').eq('alumno_id',a.id).order('fecha',{ascending:false}).limit(80),
+    sb.from('clases_individuales').select('*').eq('alumno_id',a.id).order('fecha',{ascending:false}),
+  ]);
+
+  const innerTabs=[
+    {id:'todas',label:'Todas'},
+    {id:'historial',label:'Historial'},
+    {id:'individual',label:'Individual'},
+    {id:'plan',label:'Plan'},
+  ];
+  const innerBar=`<div class="filter-tabs" style="margin-bottom:14px;">${innerTabs.map(t=>`
+    <button class="filter-tab ${clasesInnerTab===t.id?'active':''}" onclick="clasesInnerTab='${t.id}';_adminClasesRender('${a.id}')">${t.label}</button>`).join('')}</div>`;
+
+  // Render hist row helper
+  const confRow=c=>{
+    const icon=c.estado==='asistio'?'✅':c.estado==='confirmada'?'🔵':c.estado==='aplazada'?'⚠️':'❌';
+    const color=c.estado==='asistio'?'var(--green)':c.estado==='aplazada'?'var(--yellow)':c.estado==='cancelada_tardia'?'var(--red)':'var(--gray)';
     return `<div class="hist-item">
       <span class="hist-icon">${icon}</span>
-      <span style="flex:1;font-size:13px;color:${color};text-transform:capitalize;">${c.estado.replace('_',' ')}</span>
+      <span style="flex:1;font-size:13px;color:${color};text-transform:capitalize;">${c.estado.replace(/_/g,' ')}</span>
       <span style="font-size:12px;color:var(--gray);">${fmtDate(c.fecha)}</span>
       ${c.nota?`<span style="font-size:11px;color:var(--gray);">— ${c.nota}</span>`:''}
     </div>`;
-  }).join('')||'<p class="text-gray" style="padding:16px 0;">Sin historial de clases.</p>';
-  return `<div class="card">${rows}</div>`;
+  };
+
+  function renderInner(tab){
+    if(tab==='todas'){
+      const unified=[
+        ...(confs||[]).map(c=>({_t:'plan',fecha:c.fecha,_c:c})),
+        ...(inds||[]).map(c=>({_t:'ind',fecha:c.fecha,_c:c})),
+      ].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+      if(!unified.length) return '<p class="text-gray" style="padding:12px 0;">Sin registros.</p>';
+      return unified.map(u=>{
+        if(u._t==='plan') return confRow(u._c);
+        const c=u._c;
+        const isPend=c.estado_pago==='pendiente';
+        return `<div class="hist-item">
+          <span class="hist-icon">🟣</span>
+          <span style="flex:1;font-size:13px;">
+            <span style="color:#a855f7;">${c.disciplina||'Individual'}</span>
+            ${c.hora?`<span class="text-gray"> · ${c.hora}</span>`:''}
+            <span class="text-gray"> · $${Number(c.monto||0).toLocaleString('es-CO')}</span>
+          </span>
+          <span class="badge badge-${isPend?'yellow':'green'}" style="font-size:9px;">${isPend?'Pendiente':'Pagado'}</span>
+          <span style="font-size:12px;color:var(--gray);margin-left:6px;">${fmtDate(c.fecha)}</span>
+        </div>`;
+      }).join('');
+    }
+    if(tab==='historial'){
+      const rows=(confs||[]).map(confRow).join('');
+      return rows||'<p class="text-gray" style="padding:12px 0;">Sin historial del plan.</p>';
+    }
+    if(tab==='individual'){
+      return buildDetalleIndividual._sync(a.id,inds||[]);
+    }
+    if(tab==='plan'){
+      return buildPlanHTML(a);
+    }
+    return '';
+  }
+
+  // Store for re-render
+  window._adminClasesData={a,confs:confs||[],inds:inds||[]};
+  window._adminClasesRender=async function(aid){
+    if(!window._adminClasesData) return;
+    const{a,confs,inds}=window._adminClasesData;
+    const inner=renderInner(clasesInnerTab);
+    $('clases-inner').innerHTML=inner;
+    document.querySelectorAll('.filter-tab').forEach(b=>{
+      const t=b.getAttribute('onclick')?.match(/'([^']+)'\)/)?.[1];
+      b.classList.toggle('active',t===clasesInnerTab);
+    });
+  };
+
+  return `${innerBar}<div id="clases-inner">${renderInner(clasesInnerTab)}</div>`;
 }
+
+// Sync version of individual list for inline use
+buildDetalleIndividual._sync=function(alumnoId,inds){
+  const totalMonto=inds.reduce((s,c)=>s+Number(c.monto||0),0);
+  const pendiente=inds.filter(c=>c.estado_pago==='pendiente');
+  const formHtml=`
+    <div id="ind-form" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:14px;">
+      <div class="form-row">
+        <div class="form-group"><label>Fecha</label><input type="date" id="ind-fecha" value="${today()}"></div>
+        <div class="form-group"><label>Hora</label><input type="time" id="ind-hora" value="06:00"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Disciplina</label><input type="text" id="ind-disc" placeholder="Jiu Jitsu, MMA..."></div>
+        <div class="form-group"><label>Monto (COP)</label><input type="number" id="ind-monto" placeholder="80000"></div>
+      </div>
+      <div class="form-group"><label>Notas</label><input type="text" id="ind-notas" placeholder="Opcional"></div>
+      <div class="flex gap-8 mt-8">
+        <button class="btn btn-primary btn-sm" onclick="saveClaseIndividual('${alumnoId}')">Guardar</button>
+        <button class="btn btn-secondary btn-sm" onclick="$('ind-form').style.display='none'">Cancelar</button>
+      </div>
+    </div>`;
+
+  const cards=inds.map(c=>{
+    const isPend=c.estado_pago==='pendiente';
+    return `
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+          <div>
+            <div style="font-family:var(--ft);font-size:15px;font-weight:700;">${c.disciplina||'—'}</div>
+            <div style="font-size:12px;color:var(--gray);">${fmtDate(c.fecha)}${c.hora?' · '+c.hora:''}</div>
+            <div style="font-size:13px;margin-top:3px;">$${Number(c.monto||0).toLocaleString('es-CO')}</div>
+            ${c.notas?`<div style="font-size:11px;color:var(--gray);">${c.notas}</div>`:''}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px;">
+            <span class="badge badge-${isPend?'yellow':'green'}">${isPend?'🟡 Pendiente':'✅ Pagado'}${!isPend&&c.metodo_pago?' · '+c.metodo_pago:''}</span>
+            <button style="background:transparent;border:none;color:var(--red);font-size:16px;cursor:pointer;" onclick="eliminarClaseInd('${c.id}','${alumnoId}')">🗑</button>
+          </div>
+        </div>
+        ${isPend?`
+          <div id="pay-${c.id}" style="display:none;margin-top:8px;">
+            <div style="font-size:11px;color:var(--gray);margin-bottom:5px;">Método de pago:</div>
+            <div class="flex gap-8 flex-wrap">${['Efectivo','Nequi','Transferencia','PayPal'].map(m=>`<button class="btn btn-secondary btn-sm" onclick="pagarClaseInd('${c.id}','${m}','${alumnoId}')">${m}</button>`).join('')}</div>
+          </div>
+          <button class="btn btn-yellow btn-sm" style="margin-top:6px;" onclick="document.getElementById('pay-${c.id}').style.display=document.getElementById('pay-${c.id}').style.display==='none'?'block':'none'">Marcar como pagado</button>`:''}
+      </div>`;
+  }).join('')||'<p class="text-gray" style="padding:12px 0;">Sin clases individuales.</p>';
+
+  return `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:13px;color:var(--gray);">Total: <strong style="color:#fff;">$${totalMonto.toLocaleString('es-CO')}</strong>${pendiente.length?` · <span style="color:var(--yellow);">${pendiente.length} pendiente(s)</span>`:''}
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="$('ind-form').style.display=$('ind-form').style.display==='none'?'block':'none'">+ Clase individual</button>
+    </div>
+    ${formHtml}
+    ${cards}`;
+};
 
 async function buildDetallePagos(a){
   const{data:list}=await sb.from('pagos').select('*').eq('alumno_id',a.id).order('fecha',{ascending:false});
@@ -946,8 +1065,12 @@ async function renderAlumnoDashboard(){
     <div id="alert-conf" style="margin-top:10px;"></div>`;
 
   const indAvisoHtml=indProx?`
-    <div style="background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);border-radius:6px;padding:12px 16px;margin-bottom:14px;font-size:14px;color:#d8b4fe;">
-      📅 Tienes clase de <strong>${indProx.disciplina||'entreno individual'}</strong> ${indProx.fecha===today()?'hoy':'mañana'}${indProx.hora?' a las <strong>'+indProx.hora+'</strong>':''}.
+    <div style="background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.3);border-radius:6px;padding:12px 16px;margin-bottom:14px;color:#d8b4fe;">
+      <div style="font-size:14px;">📅 Tienes clase de <strong>${indProx.disciplina||'entreno individual'}</strong> ${indProx.fecha===today()?'hoy':'mañana'}${indProx.hora?' a las <strong>'+indProx.hora+'</strong>':''}.</div>
+      <div style="font-size:13px;margin-top:4px;display:flex;align-items:center;gap:8px;">
+        <span>$${Number(indProx.monto||0).toLocaleString('es-CO')}</span>
+        <span class="badge badge-${indProx.estado_pago==='pendiente'?'yellow':'green'}" style="font-size:9px;">${indProx.estado_pago==='pendiente'?'🟡 Pago pendiente':'✅ Pagado'}</span>
+      </div>
     </div>`:'';
 
   render('tab-content',`
@@ -1002,55 +1125,67 @@ async function renderAlumnoClases(){
     sb.from('clases_individuales').select('*').eq('alumno_id',a.id).order('fecha',{ascending:false}),
   ]);
 
-  // Unify: confirmaciones + individuales
-  const unified=[
-    ...(confs||[]).map(c=>({_tipo:'plan',fecha:c.fecha,hora:null,disciplina:null,estado:c.estado,_raw:c})),
-    ...(inds||[]).map(c=>({_tipo:'individual',fecha:c.fecha,hora:c.hora,disciplina:c.disciplina,estado:c.estado_pago==='pagado'?'completada':'programada',_raw:c})),
-  ].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const innerTabs=[
+    {id:'todas',label:'Todas'},
+    {id:'historial',label:'Historial'},
+    {id:'individual',label:'Individual'},
+    {id:'plan',label:'Plan'},
+  ];
 
-  const renderListFn=(items)=>{
-    const rows=items.map(c=>{
-      if(c._tipo==='individual'){
-        const icon=c.estado==='completada'?'🟣':'📅';
-        const color=c.estado==='completada'?'#a855f7':'var(--yellow)';
-        const estadoLabel=c.estado==='completada'?'Completada':'Programada';
-        return `<div class="hist-item">
-          <span class="hist-icon">${icon}</span>
-          <span style="flex:1;font-size:13px;">
-            <span style="color:${color};">${estadoLabel}</span>
-            <span class="text-gray"> · ${c.disciplina||'Individual'}${c.hora?' · '+c.hora:''}</span>
-          </span>
-          <span style="font-size:12px;color:var(--gray);">${fmtDate(c.fecha)}</span>
-        </div>`;
-      }
-      const icon=c.estado==='asistio'?'✅':c.estado==='confirmada'?'🔵':c.estado==='aplazada'?'⚠️':'❌';
-      const color=c.estado==='asistio'?'var(--green)':c.estado==='aplazada'?'var(--yellow)':c.estado==='cancelada_tardia'?'var(--red)':'var(--gray)';
-      return `<div class="hist-item">
-        <span class="hist-icon">${icon}</span>
-        <span style="flex:1;font-size:13px;color:${color};text-transform:capitalize;">${c.estado.replace(/_/g,' ')}</span>
-        <span style="font-size:12px;color:var(--gray);">${fmtDate(c.fecha)}</span>
-      </div>`;
-    }).join('')||'<p class="text-gray" style="padding:12px 0;">Sin registros.</p>';
-    $('clases-list').innerHTML=rows;
+  const confRow=c=>{
+    const icon=c.estado==='asistio'?'✅':c.estado==='confirmada'?'🔵':c.estado==='aplazada'?'⚠️':'❌';
+    const color=c.estado==='asistio'?'var(--green)':c.estado==='aplazada'?'var(--yellow)':c.estado==='cancelada_tardia'?'var(--red)':'var(--gray)';
+    return `<div class="hist-item">
+      <span class="hist-icon">${icon}</span>
+      <span style="flex:1;font-size:13px;color:${color};text-transform:capitalize;">${c.estado.replace(/_/g,' ')}</span>
+      <span style="font-size:12px;color:var(--gray);">${fmtDate(c.fecha)}</span>
+    </div>`;
   };
+
+  const indRow=c=>{
+    const isPend=c.estado_pago==='pendiente';
+    return `<div class="hist-item" style="flex-wrap:wrap;gap:4px;">
+      <span class="hist-icon">🟣</span>
+      <span style="flex:1;min-width:0;">
+        <span style="font-size:14px;font-weight:600;color:#fff;">${c.disciplina||'Individual'}</span>
+        <span class="text-gray" style="font-size:12px;"> · ${fmtDate(c.fecha)}${c.hora?' · '+c.hora:''}</span><br>
+        <span style="font-size:13px;color:#fff;">$${Number(c.monto||0).toLocaleString('es-CO')}</span>
+        <span class="badge badge-${isPend?'yellow':'green'}" style="font-size:9px;margin-left:6px;">${isPend?'🟡 Pago pendiente':'✅ Pagado'}${!isPend&&c.metodo_pago?' · '+c.metodo_pago:''}</span>
+      </span>
+    </div>`;
+  };
+
+  function renderInner(tab){
+    if(tab==='todas'){
+      const unified=[
+        ...(confs||[]).map(c=>({_t:'plan',fecha:c.fecha,_c:c})),
+        ...(inds||[]).map(c=>({_t:'ind',fecha:c.fecha,_c:c})),
+      ].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+      return unified.map(u=>u._t==='plan'?confRow(u._c):indRow(u._c)).join('')
+        ||'<p class="text-gray" style="padding:12px 0;">Sin registros.</p>';
+    }
+    if(tab==='historial'){
+      return (confs||[]).map(confRow).join('')
+        ||'<p class="text-gray" style="padding:12px 0;">Sin historial.</p>';
+    }
+    if(tab==='individual'){
+      return (inds||[]).map(indRow).join('')
+        ||'<p class="text-gray" style="padding:12px 0;">Sin clases individuales.</p>';
+    }
+    if(tab==='plan') return buildPlanHTML(a);
+    return '';
+  }
 
   render('tab-content',`
     <div class="sec-title">Mis Clases</div>
-    <div class="filter-tabs">
-      <button class="filter-tab active" id="ft-todas" onclick="_clasesFilter('todas')">Todas</button>
-      <button class="filter-tab" id="ft-plan" onclick="_clasesFilter('plan')">Plan ✅</button>
-      <button class="filter-tab" id="ft-ind" onclick="_clasesFilter('individual')">Individuales 🟣</button>
+    <div class="filter-tabs">${innerTabs.map(t=>`
+      <button class="filter-tab ${alumnoClasesInnerTab===t.id?'active':''}"
+        onclick="alumnoClasesInnerTab='${t.id}';$('ac-inner').innerHTML=window._acRender('${t.id}')">${t.label}</button>`).join('')}
     </div>
-    <div class="card" id="clases-list"></div>`);
+    <div id="ac-inner"></div>`);
 
-  window._clasesAll=unified;
-  window._clasesFilter=function(tipo){
-    document.querySelectorAll('.filter-tab').forEach(b=>b.classList.remove('active'));
-    $('ft-'+tipo)?.classList.add('active');
-    const filtered=tipo==='todas'?unified:unified.filter(c=>c._tipo===tipo);
-    renderListFn(filtered);
-  };
-  renderListFn(unified);
+  window._acRender=renderInner;
+  $('ac-inner').innerHTML=renderInner(alumnoClasesInnerTab);
 }
 
 // ── PAGOS ALUMNO ──────────────────────────────
