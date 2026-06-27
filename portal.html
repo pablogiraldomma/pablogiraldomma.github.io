@@ -702,6 +702,10 @@
       <label>Notas del entrenador</label>
       <textarea id="f-notas" placeholder="Observaciones, lesiones, objetivos..."></textarea>
     </div>
+    <div class="form-group">
+      <label>Plan de clases</label>
+      <textarea id="f-plan-clases" rows="8" placeholder="Clase 1 — Caídas y rodadas&#10;Clase 2 — Guardia cerrada&#10;Clase 3 — ..."></textarea>
+    </div>
 
     <div style="display:flex;gap:12px;margin-top:8px;">
       <button class="btn btn-primary" onclick="saveAlumno()">Guardar</button>
@@ -1034,8 +1038,9 @@
     document.getElementById('f-hora').value       = alumno?.horario_hora|| '';
     document.getElementById('f-vencimiento').value= alumno?.vencimiento || lastDayOfMonth();
     document.getElementById('f-clases-total').value= alumno?.clases_total|| '';
-    document.getElementById('f-pass-alumno').value= alumno?.pass_alumno || '';
-    document.getElementById('f-notas').value      = alumno?.notas       || '';
+    document.getElementById('f-pass-alumno').value  = alumno?.pass_alumno  || '';
+    document.getElementById('f-notas').value        = alumno?.notas        || '';
+    document.getElementById('f-plan-clases').value  = alumno?.plan_clases  || '';
     clearAlert('alert-alumno-form');
     openModal('modal-alumno');
   }
@@ -1072,6 +1077,7 @@
       clases_total: parseInt(document.getElementById('f-clases-total').value) || planClases(plan),
       pass_alumno:  pass,
       notas:        document.getElementById('f-notas').value.trim(),
+      plan_clases:  document.getElementById('f-plan-clases').value.trim(),
     };
 
     let error;
@@ -1262,9 +1268,13 @@
       <!-- Notas del entrenador -->
       <div class="card" style="margin-top:16px;">
         <div class="card-title" style="margin-bottom:12px;">Notas del entrenador</div>
-        <textarea id="notas-edit-${a.id}" style="width:100%;background:#1a1a1a;border:1px solid #333;color:#f0f0f0;padding:12px;border-radius:4px;font-family:'Inter',sans-serif;font-size:14px;resize:vertical;min-height:100px;">${a.notas || ''}</textarea>
+        <textarea id="notas-edit-${a.id}" style="width:100%;background:#1a1a1a;border:1px solid #333;color:#f0f0f0;padding:12px;border-radius:4px;font-family:'Inter',sans-serif;font-size:14px;resize:vertical;min-height:80px;">${a.notas || ''}</textarea>
         <button class="btn btn-secondary btn-sm mt-8" onclick="saveNotas('${a.id}')">Guardar notas</button>
-      </div>`;
+      </div>
+
+      <!-- Plan de entrenamiento desplegable -->
+      ${buildPlanClases(a, true)}`;
+
   }
 
   async function marcarClase(alumnoId, tipo, nota) {
@@ -1538,39 +1548,47 @@
     renderAlumnoDashboard();
   }
 
-  function buildMiPlan(a) {
-    if (!a.notas || !a.notas.trim()) return '';
-    const lines  = a.notas.trim().split('\n').map(l => l.trim()).filter(l => l);
+  /* buildMiPlan — panel alumno, usa plan_clases */
+  function buildMiPlan(a) { return buildPlanClases(a, false); }
+
+  /* buildPlanClases — reutilizable en admin y alumno
+     adminMode=true → edición inline no disponible, pero misma vista */
+  function buildPlanClases(a, adminMode) {
+    const src = (a.plan_clases || '').trim();
+    if (!src) return adminMode
+      ? `<div class="card" style="margin-top:16px;"><p class="text-gray" style="font-size:13px;">Sin plan de clases asignado aún.</p></div>`
+      : '';
+
+    const lines   = src.split('\n').map(l => l.trim()).filter(l => l);
     const tomadas = a.clases_tomadas || 0;
-    let html = ''; let firstLine = true;
+    const uid     = adminMode ? 'admin' : 'alumno'; // IDs únicos para evitar conflicto
+    let html = '';
 
     for (const line of lines) {
-      if (firstLine) {
-        html += `<p style="color:#cc0000;font-size:13px;margin-bottom:14px;font-weight:600;">${line}</p>`;
-        firstLine = false; continue;
-      }
       const m = line.match(/^Clase\s+(\d+)\s*[—–-]?\s*(.*)/i);
       if (m) {
-        const num = parseInt(m[1]), desc = m[2] || '';
-        const done = tomadas >= num, next = tomadas === num - 1;
-        html += `<div style="display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px solid #1a1a1a;">
-          <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${done?'#555':'#cc0000'};flex-shrink:0;width:28px;">${num}</span>
-          <span style="font-size:13px;color:${done?'#555':next?'#fff':'#666'};font-weight:${next?700:400};text-decoration:${done?'line-through':'none'};">${done?'✅ ':next?'▶ ':''}${desc}</span>
+        const num  = parseInt(m[1]), desc = m[2] || '';
+        const done = tomadas >= num;
+        const next = tomadas === num - 1;
+        html += `<div style="display:flex;align-items:baseline;gap:10px;padding:7px 0;border-bottom:1px solid #1a1a1a;">
+          <span style="font-family:'Bebas Neue',sans-serif;font-size:20px;color:${done?'#444':'#cc0000'};flex-shrink:0;width:28px;line-height:1;">${num}</span>
+          <span style="font-size:13px;color:${done?'#444':next?'#fff':'#555'};font-weight:${next?700:400};text-decoration:${done?'line-through':'none'};">${done?'✅ ':next?'▶ ':''}${desc}</span>
         </div>`; continue;
       }
-      if (line.endsWith(':') || line === line.toUpperCase()) {
+      if (line.endsWith(':') || (line === line.toUpperCase() && line.length > 3)) {
         html += `<p style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:3px;color:#cc0000;text-transform:uppercase;margin:16px 0 8px;">${line}</p>`; continue;
       }
       html += `<p style="color:#888;font-size:13px;margin:4px 0;">${line}</p>`;
     }
 
-    return `<div style="border-radius:6px;overflow:hidden;border:1px solid #222;border-top:3px solid #cc0000;">
-      <button onclick="const b=document.getElementById('plan-body'),a=document.getElementById('plan-arrow'),o=b.style.display!=='none';b.style.display=o?'none':'block';a.textContent=o?'▼':'▲';"
+    const title = adminMode ? 'PLAN DE ENTRENAMIENTO' : 'MI PLAN DE ENTRENAMIENTO';
+    return `<div style="border-radius:6px;overflow:hidden;border:1px solid #222;border-top:3px solid #cc0000;${adminMode?'margin-top:16px;':''}">
+      <button onclick="(function(){const b=document.getElementById('plan-body-${uid}'),ar=document.getElementById('plan-arrow-${uid}'),o=b.style.display!=='none';b.style.display=o?'none':'block';ar.textContent=o?'▼':'▲';})()"
         style="width:100%;background:#111;border:none;color:#fff;font-family:'Oswald',sans-serif;font-size:15px;letter-spacing:2px;text-transform:uppercase;padding:16px 20px;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-        MI PLAN DE ENTRENAMIENTO
-        <span id="plan-arrow" style="color:#cc0000;font-size:12px;">▼</span>
+        ${title}
+        <span id="plan-arrow-${uid}" style="color:#cc0000;font-size:12px;">▼</span>
       </button>
-      <div id="plan-body" style="display:none;background:#111;padding:16px 20px;">${html}</div>
+      <div id="plan-body-${uid}" style="display:none;background:#111;padding:16px 20px;">${html}</div>
     </div>`;
   }
 
