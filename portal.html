@@ -893,25 +893,77 @@ async function buildDetalleClases(a){
 
   function renderInner(tab){
     if(tab==='todas'){
-      const unified=[
-        ...(confs||[]).map(c=>({_t:'plan',fecha:c.fecha,_c:c})),
-        ...(inds||[]).map(c=>({_t:'ind',fecha:c.fecha,_c:c})),
-      ].sort((a,b)=>b.fecha.localeCompare(a.fecha));
-      if(!unified.length) return '<p class="text-gray" style="padding:12px 0;">Sin registros.</p>';
-      return unified.map(u=>{
-        if(u._t==='plan') return confRow(u._c);
-        const c=u._c;
-        const isPend=c.estado_pago==='pendiente';
-        return `<div class="hist-item">
-          <span class="hist-icon">🟣</span>
-          <span style="flex:1;font-size:13px;">
-            <span style="color:#a855f7;">${c.disciplina||'Individual'}</span>
-            ${c.hora?`<span class="text-gray"> · ${c.hora}</span>`:''}
-            <span class="text-gray"> · $${Number(c.monto||0).toLocaleString('es-CO')}</span>
-          </span>
-          <span class="badge badge-${isPend?'yellow':'green'}" style="font-size:9px;">${isPend?'Pendiente':'Pagado'}</span>
-          <span style="font-size:12px;color:var(--gray);margin-left:6px;">${fmtDate(c.fecha)}</span>
-        </div>`;
+      // Agrupar por fecha para combinar plan + individual del mismo día
+      const byDate={};
+      (confs||[]).forEach(c=>{
+        if(!byDate[c.fecha]) byDate[c.fecha]={fecha:c.fecha,plan:[],ind:[]};
+        byDate[c.fecha].plan.push(c);
+      });
+      (inds||[]).forEach(c=>{
+        if(!byDate[c.fecha]) byDate[c.fecha]={fecha:c.fecha,plan:[],ind:[]};
+        byDate[c.fecha].ind.push(c);
+      });
+
+      const fechas=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+      if(!fechas.length) return '<p class="text-gray" style="padding:12px 0;">Sin registros.</p>';
+
+      return fechas.map(fecha=>{
+        const grupo=byDate[fecha];
+        const cards=[];
+
+        // Tarjetas de plan
+        grupo.plan.forEach(c=>{
+          const estadoColor=c.estado==='asistio'||c.estado==='confirmada'?'#22c55e':
+                            c.estado==='aplazada'?'#f59e0b':
+                            c.estado==='cancelada_tardia'?'#cc0000':'#888';
+          const badgeClass=c.estado==='asistio'||c.estado==='confirmada'?'badge-green':
+                           c.estado==='aplazada'?'badge-yellow':
+                           c.estado==='cancelada_tardia'?'badge-red':'badge-gray';
+          const dot=c.estado==='asistio'||c.estado==='confirmada'?'🟢':
+                    c.estado==='aplazada'?'🟡':
+                    c.estado==='cancelada_tardia'?'🔴':'⚪';
+          const estadoLabel=c.estado.replace(/_/g,' ');
+          const safec=JSON.stringify({id:c.id,alumno_id:c.alumno_id,fecha:c.fecha,estado:c.estado,nota:c.nota||''}).replace(/"/g,'&quot;');
+          cards.push(`
+            <div style="background:var(--bg3);border:1px solid var(--border);border-left:4px solid ${estadoColor};border-radius:6px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+              <span style="font-size:22px;flex-shrink:0;">${dot}</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-family:var(--ft);font-size:16px;font-weight:700;color:#fff;">${fmtDate(c.fecha)}</div>
+                <div style="font-size:13px;color:#aaa;margin-top:2px;">Clase del plan${c.nota?` · ${c.nota}`:''}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+                <span class="badge ${badgeClass}" style="font-size:9px;text-transform:capitalize;">${estadoLabel}</span>
+                <div style="display:flex;gap:4px;">
+                  <button onclick="editConf(JSON.parse(this.dataset.c))" data-c="${safec}" style="background:transparent;border:none;color:var(--gray);cursor:pointer;font-size:14px;padding:2px 4px;">✏️</button>
+                  <button onclick="deleteConf('${c.id}','${c.alumno_id}')" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 4px;">🗑</button>
+                </div>
+              </div>
+            </div>`);
+        });
+
+        // Tarjetas de clases individuales
+        grupo.ind.forEach(c=>{
+          const isPend=c.estado_pago==='pendiente';
+          const safeInd=JSON.stringify(c).replace(/"/g,'&quot;');
+          cards.push(`
+            <div style="background:var(--bg3);border:1px solid var(--border);border-left:4px solid #a855f7;border-radius:6px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+              <span style="font-size:22px;flex-shrink:0;">🟣</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-family:var(--ft);font-size:16px;font-weight:700;color:#fff;">${fmtDate(c.fecha)}</div>
+                <div style="font-size:13px;color:#aaa;margin-top:2px;">${c.disciplina||'Clase individual'}${c.hora?` · ${c.hora}`:''}${c.notas?` · ${c.notas}`:''}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+                <span class="badge badge-${isPend?'yellow':'green'}" style="font-size:9px;">${isPend?'🟡 Pendiente':'✅ Pagado'}${!isPend&&c.metodo_pago?' · '+c.metodo_pago:''}</span>
+                <div style="font-size:13px;font-weight:700;color:#fff;">$${Number(c.monto||0).toLocaleString('es-CO')}</div>
+                <div style="display:flex;gap:4px;">
+                  <button onclick="editClaseInd(JSON.parse(this.dataset.c))" data-c="${safeInd}" style="background:transparent;border:none;color:var(--gray);cursor:pointer;font-size:14px;padding:2px 4px;">✏️</button>
+                  <button onclick="eliminarClaseInd('${c.id}','${c.alumno_id}')" style="background:transparent;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 4px;">🗑</button>
+                </div>
+              </div>
+            </div>`);
+        });
+
+        return cards.join('');
       }).join('');
     }
     if(tab==='historial'){
