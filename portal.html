@@ -576,7 +576,7 @@ async function buildDetallePeril(a){
       ${infoF('Celular',a.celular)}
       ${infoF('Correo',a.correo)}
       ${infoF('Nacimiento',fmtDate(a.nacimiento))}
-      ${infoF('Horario',`${a.horario_dia||'—'} ${a.horario_hora||''}`)}
+      ${infoF('Horario', a.tipo_horario==='flexible' ? `📅 Flexible · ${a.clases_semana||3} clases/semana` : `📅 ${a.horario_dia||'—'}${a.horario_hora?' · '+a.horario_hora:''}`)}
       ${infoF('Vencimiento',fmtDate(a.vencimiento))}
     </div>`;
 }
@@ -672,8 +672,37 @@ async function saveClaseIndividual(alumnoId){
 }
 
 async function pagarClaseInd(claseId, metodo, alumnoId){
+  // Obtener datos de la clase
+  const{data:clase}=await sb.from('clases_individuales').select('*').eq('id',claseId).single();
+  if(!clase) return;
+
+  // Marcar como pagada
   await sb.from('clases_individuales').update({estado_pago:'pagado',metodo_pago:metodo}).eq('id',claseId);
-  openDetalleAlumno(alumnoId,'individual');
+
+  // Verificar si ya existe pago ese día con mismo monto para no duplicar
+  const{data:pagoExist}=await sb.from('pagos')
+    .select('id').eq('alumno_id',alumnoId).eq('fecha',clase.fecha)
+    .eq('monto',clase.monto).eq('plan','individual').maybeSingle();
+
+  if(!pagoExist){
+    await sb.from('pagos').insert({
+      alumno_id: alumnoId,
+      fecha: clase.fecha,
+      monto: clase.monto,
+      plan: 'individual',
+      notas: `Clase individual - ${clase.disciplina||'Individual'} - ${metodo}`,
+    });
+  }
+
+  // Mostrar confirmación breve
+  const msg=pagoExist
+    ?'⚠️ Pago ya registrado anteriormente'
+    :'✅ Pago registrado automáticamente';
+  alert(msg);
+
+  openDetalleAlumno(alumnoId,'clases');
+  clasesInnerTab='individual';
+  renderDetalleAlumno();
 }
 
 async function eliminarClaseInd(claseId, alumnoId){
@@ -921,14 +950,32 @@ function renderAdminForm(alumno){
 
     <div class="form-section">
       <div class="form-section-title">Horario</div>
-      <div class="form-row">
-        <div class="form-group"><label>Día</label>
-          <select id="f-dia">
-            <option value="">Sin asignar</option>
-            ${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d=>`<option ${a.horario_dia===d?'selected':''}>${d}</option>`).join('')}
-          </select>
+      <div class="form-group">
+        <label>Tipo de horario</label>
+        <div style="display:flex;gap:20px;margin-top:6px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;color:var(--white);">
+            <input type="radio" name="tipo_horario" id="th-fijo" value="fijo" ${(a.tipo_horario||'fijo')==='fijo'?'checked':''} onchange="toggleHorario()"> Fijo
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;color:var(--white);">
+            <input type="radio" name="tipo_horario" id="th-flexible" value="flexible" ${a.tipo_horario==='flexible'?'checked':''} onchange="toggleHorario()"> Flexible
+          </label>
         </div>
-        <div class="form-group"><label>Hora</label><input id="f-hora" value="${a.horario_hora||''}" placeholder="6:00 AM"></div>
+      </div>
+      <div id="h-fijo-fields" style="${a.tipo_horario==='flexible'?'display:none;':''}">
+        <div class="form-row">
+          <div class="form-group"><label>Día</label>
+            <select id="f-dia">
+              <option value="">Sin asignar</option>
+              ${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'].map(d=>`<option ${a.horario_dia===d?'selected':''}>${d}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group"><label>Hora</label><input id="f-hora" value="${a.horario_hora||''}" placeholder="6:00 AM"></div>
+        </div>
+      </div>
+      <div id="h-flex-fields" style="${a.tipo_horario==='flexible'?'':'display:none;'}">
+        <div class="form-group"><label>Clases por semana</label>
+          <input type="number" id="f-semana" value="${a.clases_semana||3}" min="1" max="7" placeholder="3">
+        </div>
       </div>
     </div>
 
@@ -957,6 +1004,14 @@ function renderAdminForm(alumno){
     </div>`);
 }
 
+function toggleHorario(){
+  const flex=document.getElementById('th-flexible')?.checked;
+  const fijoF=document.getElementById('h-fijo-fields');
+  const flexF=document.getElementById('h-flex-fields');
+  if(fijoF) fijoF.style.display=flex?'none':'';
+  if(flexF) flexF.style.display=flex?'':'none';
+}
+
 function autoPlanClases(){
   const p=$('f-plan').value, t=planClases(p);
   if(t) $('f-total').value=t;
@@ -976,7 +1031,9 @@ async function saveAlumno(){
     celular:($('f-celular').value||'').trim(), nacimiento:$('f-nac').value||null,
     plan, clases_total:parseInt($('f-total').value)||planClases(plan),
     extra_clases_tomadas:parseInt($('f-extra').value)||0,
-    horario_dia:$('f-dia').value, horario_hora:($('f-hora').value||'').trim(),
+    tipo_horario: document.querySelector('input[name="tipo_horario"]:checked')?.value || 'fijo',
+    horario_dia:($('f-dia')?.value||''), horario_hora:($('f-hora')?.value||'').trim(),
+    clases_semana: parseInt($('f-semana')?.value)||3,
     vencimiento:$('f-venc').value||null, pass_alumno:pass,
     plan_clases:($('f-planc').value||'').trim(), notas:($('f-notas').value||'').trim(),
   };
@@ -1238,7 +1295,7 @@ async function renderAlumnoPerfil(){
       ${infoF('Celular',a.celular)}
       ${infoF('Correo',a.correo)}
       ${infoF('Nacimiento',fmtDate(a.nacimiento))}
-      ${infoF('Horario',`${a.horario_dia||'—'} ${a.horario_hora||''}`)}
+      ${infoF('Horario', a.tipo_horario==='flexible' ? `📅 Flexible · ${a.clases_semana||3} clases/semana` : `📅 ${a.horario_dia||'—'}${a.horario_hora?' · '+a.horario_hora:''}`)}
       ${infoF('Vencimiento',fmtDate(a.vencimiento))}
     </div>`);
 }
@@ -1340,20 +1397,40 @@ async function savePago(){
   if(S.role==='admin'&&detailAlumnoId) openDetalleAlumno(detailAlumnoId,'pagos');
 }
 
-async function uploadFotoPerfil(alumnoId,file,containerId,msgId){
-  if(!file) return;
-  const el=$(containerId);
-  if(el) el.style.opacity='0.4';
-  const ext=file.name.split('.').pop().toLowerCase();
-  const path=`${alumnoId}_${Date.now()}.${ext}`;
-  const{error}=await sb.storage.from('fotos-alumnos').upload(path,file,{upsert:true});
-  if(error){if(el)el.style.opacity='1';alert('Error: '+error.message);return;}
-  const{data:ud}=sb.storage.from('fotos-alumnos').getPublicUrl(path);
-  const foto_url=ud.publicUrl+'?t='+Date.now();
-  await sb.from('alumnos').update({foto_url}).eq('id',alumnoId);
-  if(S.role==='alumno'&&S.alumno.id===alumnoId){S.alumno.foto_url=foto_url;localStorage.setItem('pg_s',JSON.stringify(S));}
-  if(el){el.style.opacity='1';el.innerHTML=`<img src="${foto_url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;}
-  const m=$(msgId);if(m){m.textContent='Foto actualizada ✓';m.style.color='var(--green)';}
+async function uploadFotoPerfil(alumnoId, file, avatarId, msgId) {
+  const msgEl = $(msgId);
+  if (msgEl) { msgEl.textContent = 'Subiendo...'; msgEl.style.color = 'var(--gray)'; }
+  try {
+    const ext = file.name.split('.').pop();
+    const fileName = alumnoId + '_' + Date.now() + '.' + ext;
+
+    const { error: uploadError } = await sb.storage
+      .from('fotos-alumnos')
+      .upload(fileName, file, { upsert: true, contentType: file.type });
+
+    if (uploadError) throw uploadError;
+
+    const { data: urlData } = sb.storage.from('fotos-alumnos').getPublicUrl(fileName);
+    const publicUrl = urlData.publicUrl;
+
+    const { error: dbError } = await sb.from('alumnos').update({ foto_url: publicUrl }).eq('id', alumnoId);
+    if (dbError) throw dbError;
+
+    if (S.role === 'alumno' && S.alumno.id === alumnoId) {
+      S.alumno.foto_url = publicUrl;
+      localStorage.setItem('pg_s', JSON.stringify(S));
+    }
+
+    const avatar = $(avatarId);
+    if (avatar) {
+      avatar.innerHTML = '<img src="' + publicUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
+    }
+
+    if (msgEl) { msgEl.textContent = '✓ Foto actualizada'; msgEl.style.color = 'var(--green)'; }
+  } catch(err) {
+    console.error('Error foto:', err);
+    if (msgEl) { msgEl.textContent = 'Error: ' + err.message; msgEl.style.color = '#ef4444'; }
+  }
 }
 
 function subirFoto(input){uploadFotoPerfil(S.alumno.id,input.files[0],'avatar-circle','foto-alm-msg');}
